@@ -1,0 +1,1735 @@
+openapi: 3.0.3
+info:
+  title: Stock App Backend API
+  version: 1.0.0
+  description: |
+    OpenAPI documentation for current Laravel API routes under `/api/v1`.
+
+servers:
+  - url: http://localhost:8000/api/v1
+    description: Local development
+
+tags:
+  - name: Auth
+  - name: Bet
+  - name: Wallet
+  - name: Announcement
+  - name: OddSetting
+  - name: Admin
+
+paths:
+  /register:
+    post:
+      tags: [Auth]
+      summary: Register new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: Registration successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSuccessResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /login:
+    post:
+      tags: [Auth]
+      summary: Login with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSuccessResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /me:
+    get:
+      tags: [Auth]
+      summary: Get authenticated user profile
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Authenticated user profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
+  /me/bank-info:
+    get:
+      tags: [Wallet]
+      summary: Get authenticated user's bank info
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Bank info retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WalletBankInfoResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/WalletBankInfoNotFound'
+    post:
+      tags: [Wallet]
+      summary: Create authenticated user's bank info
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WalletBankInfoStoreRequest'
+      responses:
+        '201':
+          description: Bank info created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WalletBankInfoResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    put:
+      tags: [Wallet]
+      summary: Update authenticated user's bank info
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WalletBankInfoUpdateRequest'
+      responses:
+        '200':
+          description: Bank info updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WalletBankInfoResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags: [Wallet]
+      summary: Clear authenticated user's bank info
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Bank info cleared
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessNoDataResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
+  /logout:
+    post:
+      tags: [Auth]
+      summary: Logout current access token
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessNoDataResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
+  /bets:
+    get:
+      tags: [Bet]
+      summary: List authenticated user's bets
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: page_size
+          in: query
+          required: false
+          description: Page size clamped to [1,100]. Defaults to 10.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: Bets list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BetListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+    post:
+      tags: [Bet]
+      summary: Create bet for authenticated user
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BetStoreRequest'
+      responses:
+        '201':
+          description: Bet created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BetItemResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /bets/{bet}:
+    get:
+      tags: [Bet]
+      summary: Get bet by id (authenticated, owner-scoped)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BetId'
+      responses:
+        '200':
+          description: Bet detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BetItemResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/BetNotFound'
+    put:
+      tags: [Bet]
+      summary: Update bet by id (authenticated, owner-scoped)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BetId'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BetUpdateRequest'
+      responses:
+        '200':
+          description: Bet updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BetItemResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/BetNotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags: [Bet]
+      summary: Delete bet by id (authenticated, owner-scoped)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BetId'
+      responses:
+        '200':
+          description: Bet deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessNoDataResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/BetNotFound'
+        '409':
+          $ref: '#/components/responses/BetDeleteConflict'
+
+  /bets/{bet}/pay-slip:
+    get:
+      tags: [Bet]
+      summary: Download pay slip image (authenticated, owner or admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BetId'
+      responses:
+        '200':
+          description: Pay slip image
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Bet or pay slip not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /bets/{bet}/payout-proof:
+    get:
+      tags: [Bet]
+      summary: Download payout proof image (authenticated, owner or admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BetId'
+      responses:
+        '200':
+          description: Payout proof image
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          description: Bet or payout proof not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /announcements:
+    get:
+      tags: [Announcement]
+      summary: List announcements (authenticated)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Announcements list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnouncementListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
+  /announcements/{announcement}:
+    get:
+      tags: [Announcement]
+      summary: Get announcement by id (authenticated)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AnnouncementId'
+      responses:
+        '200':
+          description: Announcement detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnouncementItemResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /odd-settings:
+    get:
+      tags: [OddSetting]
+      summary: List odd settings (authenticated)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Odd settings list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OddSettingListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
+  /odd-settings/{oddSetting}:
+    get:
+      tags: [OddSetting]
+      summary: Get odd setting by id (authenticated)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OddSettingId'
+      responses:
+        '200':
+          description: Odd setting detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OddSettingItemResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /admin/dashboard:
+    get:
+      tags: [Admin]
+      summary: Admin dashboard scope check
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Admin dashboard data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminDashboardResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/analytics/kpis:
+    get:
+      tags: [Admin]
+      summary: KPI snapshot for bets (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DateFrom'
+        - $ref: '#/components/parameters/DateTo'
+        - $ref: '#/components/parameters/TargetOpenTime'
+      responses:
+        '200':
+          description: Analytics KPI data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyticsKpisResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /admin/analytics/trends/daily:
+    get:
+      tags: [Admin]
+      summary: Daily trends for bets (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DateFrom'
+        - $ref: '#/components/parameters/DateTo'
+        - $ref: '#/components/parameters/TargetOpenTime'
+        - $ref: '#/components/parameters/BetType'
+      responses:
+        '200':
+          description: Daily trends
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyticsDailyTrendsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /admin/analytics/status-distribution:
+    get:
+      tags: [Admin]
+      summary: Distribution of review, result, and payout states (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DateFrom'
+        - $ref: '#/components/parameters/DateTo'
+        - $ref: '#/components/parameters/TargetOpenTime'
+      responses:
+        '200':
+          description: Status distribution
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyticsStatusDistributionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /admin/analytics/payouts:
+    get:
+      tags: [Admin]
+      summary: Payout analytics and admin breakdown (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DateFrom'
+        - $ref: '#/components/parameters/DateTo'
+        - name: admin_user_id
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Payout analytics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyticsPayoutsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /admin/analytics/top-numbers:
+    get:
+      tags: [Admin]
+      summary: Most frequent bet numbers (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DateFrom'
+        - $ref: '#/components/parameters/DateTo'
+        - $ref: '#/components/parameters/BetType'
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Top number analytics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyticsTopNumbersResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /admin/analytics/settlement-runs:
+    get:
+      tags: [Admin]
+      summary: Settlement run analytics (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/DateFrom'
+        - $ref: '#/components/parameters/DateTo'
+      responses:
+        '200':
+          description: Settlement run analytics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnalyticsSettlementRunsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /admin/announcements:
+    post:
+      tags: [Announcement]
+      summary: Create announcement (admin)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnnouncementWriteRequest'
+      responses:
+        '201':
+          description: Announcement created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnouncementItemResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /admin/announcements/{announcement}:
+    put:
+      tags: [Announcement]
+      summary: Update announcement (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AnnouncementId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnnouncementWriteRequest'
+      responses:
+        '200':
+          description: Announcement updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnouncementItemResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags: [Announcement]
+      summary: Delete announcement (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AnnouncementId'
+      responses:
+        '200':
+          description: Announcement deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessNoDataResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /admin/odd-settings:
+    post:
+      tags: [OddSetting]
+      summary: Create odd setting (admin)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OddSettingWriteRequest'
+      responses:
+        '201':
+          description: Odd setting created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OddSettingItemResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /admin/odd-settings/{oddSetting}:
+    put:
+      tags: [OddSetting]
+      summary: Update odd setting (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OddSettingId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OddSettingWriteRequest'
+      responses:
+        '200':
+          description: Odd setting updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OddSettingItemResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+    delete:
+      tags: [OddSetting]
+      summary: Delete odd setting (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/OddSettingId'
+      responses:
+        '200':
+          description: Odd setting deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessNoDataResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /admin/bets:
+    get:
+      tags: [Bet]
+      summary: List all bets (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: page_size
+          in: query
+          required: false
+          description: Page size clamped to [1,100]. Defaults to 10.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: Bets list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BetListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /admin/bets/{bet}/status:
+    patch:
+      tags: [Bet]
+      summary: Update bet review status (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BetId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BetAdminStatusUpdateRequest'
+      responses:
+        '200':
+          description: Bet status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BetItemResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/BetNotFound'
+        '409':
+          description: Status update conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /admin/bets/{bet}/payout:
+    post:
+      tags: [Bet]
+      summary: Mark winning bet as paid out with payout proof (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BetId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BetPayoutRequest'
+      responses:
+        '200':
+          description: Bet paid out
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BetItemResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/BetNotFound'
+        '409':
+          description: Bet payout conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Token
+
+  parameters:
+    AnnouncementId:
+      name: announcement
+      in: path
+      required: true
+      schema:
+        type: integer
+    OddSettingId:
+      name: oddSetting
+      in: path
+      required: true
+      schema:
+        type: integer
+    BetId:
+      name: bet
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    DateFrom:
+      name: from
+      in: query
+      required: true
+      schema:
+        type: string
+        format: date
+    DateTo:
+      name: to
+      in: query
+      required: true
+      schema:
+        type: string
+        format: date
+    TargetOpenTime:
+      name: target_opentime
+      in: query
+      required: false
+      schema:
+        type: string
+        enum: ['11:00:00', '12:01:00', '15:00:00', '16:30:00']
+    BetType:
+      name: bet_type
+      in: query
+      required: false
+      schema:
+        type: string
+        enum: ['2D', '3D']
+
+  responses:
+    Unauthenticated:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Forbidden for current user role
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    ValidationError:
+      description: Validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationErrorResponse'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: No query results for model [App\\Models\\Resource] 999999
+
+    WalletBankInfoNotFound:
+      description: Bank info not found for current user
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/WalletBankInfoNotFoundResponse'
+
+    BetNotFound:
+      description: Bet not found (or not owned by current user)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/BetNotFoundResponse'
+
+    BetDeleteConflict:
+      description: Bet cannot be deleted due to dependent results
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/BetDeleteConflictResponse'
+
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [name, email, password, password_confirmation]
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        email:
+          type: string
+          format: email
+          maxLength: 255
+        password:
+          type: string
+          minLength: 8
+        password_confirmation:
+          type: string
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        username:
+          type: string
+          nullable: true
+        email:
+          type: string
+          format: email
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Announcement:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        summary:
+          type: string
+        description:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    OddSetting:
+      type: object
+      properties:
+        id:
+          type: integer
+        bet_type:
+          type: string
+          enum: ['2D', '3D']
+        odd:
+          type: string
+          example: "80.00"
+        bet_amount:
+          type: integer
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    AuthData:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        token:
+          type: string
+
+    AuthSuccessResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/AuthData'
+        errors:
+          type: object
+          nullable: true
+
+    MeResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            user:
+              $ref: '#/components/schemas/User'
+        errors:
+          type: object
+          nullable: true
+
+    WalletBankInfo:
+      type: object
+      properties:
+        bank_name:
+          type: string
+          enum: [KBZ, AYA, CB, UAB, YOMA, OTHER]
+        account_name:
+          type: string
+          maxLength: 255
+        account_number:
+          type: string
+          maxLength: 255
+
+    WalletBankInfoData:
+      type: object
+      properties:
+        bank_info:
+          $ref: '#/components/schemas/WalletBankInfo'
+
+    WalletBankInfoResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          $ref: '#/components/schemas/WalletBankInfoData'
+        errors:
+          type: object
+          nullable: true
+
+    WalletBankInfoNotFoundResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Bank info not found.
+        data:
+          type: object
+          nullable: true
+        errors:
+          type: object
+          nullable: true
+
+    WalletBankInfoStoreRequest:
+      type: object
+      required: [bank_name, account_name, account_number]
+      properties:
+        bank_name:
+          type: string
+          enum: [KBZ, AYA, CB, UAB, YOMA, OTHER]
+        account_name:
+          type: string
+          maxLength: 255
+        account_number:
+          type: string
+          maxLength: 255
+
+    WalletBankInfoUpdateRequest:
+      type: object
+      properties:
+        bank_name:
+          type: string
+          enum: [KBZ, AYA, CB, UAB, YOMA, OTHER]
+        account_name:
+          type: string
+          maxLength: 255
+        account_number:
+          type: string
+          maxLength: 255
+
+    AnnouncementWriteRequest:
+      type: object
+      required: [title, summary, description]
+      properties:
+        title:
+          type: string
+          maxLength: 255
+        summary:
+          type: string
+        description:
+          type: string
+
+    OddSettingWriteRequest:
+      type: object
+      required: [bet_type, odd, bet_amount]
+      properties:
+        bet_type:
+          type: string
+          enum: ['2D', '3D']
+        odd:
+          type: number
+          minimum: 0
+        bet_amount:
+          type: integer
+          minimum: 1
+        is_active:
+          type: boolean
+
+    AnnouncementListResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            announcements:
+              type: array
+              items:
+                $ref: '#/components/schemas/Announcement'
+        errors:
+          type: object
+          nullable: true
+
+    AnnouncementItemResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            announcement:
+              $ref: '#/components/schemas/Announcement'
+        errors:
+          type: object
+          nullable: true
+
+    OddSettingListResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            odd_settings:
+              type: array
+              items:
+                $ref: '#/components/schemas/OddSetting'
+        errors:
+          type: object
+          nullable: true
+
+    OddSettingItemResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            odd_setting:
+              $ref: '#/components/schemas/OddSetting'
+        errors:
+          type: object
+          nullable: true
+
+    AdminDashboardResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            dashboard:
+              type: object
+              properties:
+                scope:
+                  type: string
+                  example: admin
+        errors:
+          type: object
+          nullable: true
+
+    SuccessNoDataResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          type: object
+          nullable: true
+        errors:
+          type: object
+          nullable: true
+
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          type: object
+          nullable: true
+        errors:
+          type: object
+
+    ValidationErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: The given data was invalid.
+        data:
+          type: object
+          nullable: true
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+
+    BetNumber:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        bet_id:
+          type: string
+          format: uuid
+        number:
+          type: integer
+          minimum: 0
+          maximum: 255
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Bet:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: integer
+        bet_slip:
+          type: string
+          format: uuid
+        bet_type:
+          type: string
+          enum: ['2D', '3D']
+        target_opentime:
+          type: string
+          enum: ['11:00:00', '12:01:00', '15:00:00', '16:30:00']
+        stock_date:
+          type: string
+          format: date
+        amount:
+          type: integer
+          minimum: 1
+        total_amount:
+          type: string
+          example: '200.00'
+        status:
+          type: string
+          enum: [PENDING, ACCEPTED, REJECTED, REFUNDED]
+        bet_result_status:
+          type: string
+          enum: [OPEN, WON, LOST, VOID]
+        payout_status:
+          type: string
+          enum: [PENDING, PAID_OUT]
+        paid_out_at:
+          type: string
+          format: date-time
+          nullable: true
+        paid_out_by_user_id:
+          type: integer
+          nullable: true
+        payout_reference:
+          type: string
+          nullable: true
+        payout_note:
+          type: string
+          nullable: true
+        placed_at:
+          type: string
+          format: date-time
+          nullable: true
+        settled_at:
+          type: string
+          format: date-time
+          nullable: true
+        settled_result_history_id:
+          type: string
+          nullable: true
+        bet_numbers:
+          type: array
+          items:
+            $ref: '#/components/schemas/BetNumber'
+        pay_slip:
+          type: object
+          properties:
+            exists:
+              type: boolean
+            download_url:
+              type: string
+              nullable: true
+            file_name:
+              type: string
+              nullable: true
+            mime_type:
+              type: string
+              nullable: true
+            size:
+              type: integer
+              nullable: true
+        payout_proof:
+          type: object
+          properties:
+            exists:
+              type: boolean
+            download_url:
+              type: string
+              nullable: true
+            file_name:
+              type: string
+              nullable: true
+            mime_type:
+              type: string
+              nullable: true
+            size:
+              type: integer
+              nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    BetStoreRequest:
+      type: object
+      required: [pay_slip_image, bet_type, target_opentime, amount, bet_numbers]
+      description: Client-writable fields only. Review/result/payout statuses are server-managed and rejected if supplied.
+      properties:
+        pay_slip_image:
+          type: string
+          format: binary
+          description: Required pay slip image attachment (jpg/jpeg/png/webp; max 10MB).
+        bet_type:
+          type: string
+          enum: ['2D', '3D']
+          description: Bet type enum used by the current 2D/3D flow.
+        target_opentime:
+          type: string
+          enum: ['11:00:00', '12:01:00', '15:00:00', '16:30:00']
+          description: Target stock market open time for this bet.
+        amount:
+          type: integer
+          minimum: 1
+          description: Stake amount. Must be at least 1.
+        bet_numbers:
+          type: array
+          uniqueItems: true
+          description: Unique list of numbers for this bet.
+          items:
+            type: integer
+            minimum: 0
+            maximum: 255
+
+    BetUpdateRequest:
+      type: object
+      description: Partial update payload. Send only client-writable fields that should be changed. Review/result/payout statuses are server-managed and rejected if supplied.
+      properties:
+        bet_type:
+          type: string
+          enum: ['2D', '3D']
+          description: Bet type enum used by the current 2D/3D flow.
+        target_opentime:
+          type: string
+          enum: ['11:00:00', '12:01:00', '15:00:00', '16:30:00']
+          description: Target stock market open time for this bet.
+        amount:
+          type: integer
+          minimum: 1
+          description: Stake amount. Must be at least 1.
+        bet_numbers:
+          type: array
+          uniqueItems: true
+          description: Replaces existing bet numbers when provided.
+          items:
+            type: integer
+            minimum: 0
+            maximum: 255
+
+    BetPayoutRequest:
+      type: object
+      required: [payout_proof_image]
+      properties:
+        payout_proof_image:
+          type: string
+          format: binary
+          description: Required payout proof image attachment (jpg/jpeg/png/webp; max 10MB).
+        payout_reference:
+          type: string
+          nullable: true
+          maxLength: 255
+        payout_note:
+          type: string
+          nullable: true
+          maxLength: 2000
+
+    BetAdminStatusUpdateRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [ACCEPTED, REJECTED, REFUNDED]
+          description: ACCEPTED and REJECTED are review transitions from submitted bets; REFUNDED is blocked when payout_status is PAID_OUT.
+
+    AnalyticsKpisResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            kpis:
+              type: object
+              properties:
+                total_bets: {type: integer}
+                unique_bettors: {type: integer}
+                total_turnover: {type: string}
+                accepted_count: {type: integer}
+                rejected_count: {type: integer}
+                refunded_count: {type: integer}
+                won_count: {type: integer}
+                lost_count: {type: integer}
+                void_count: {type: integer}
+                paid_out_count: {type: integer}
+        errors:
+          type: object
+          nullable: true
+
+    AnalyticsDailyTrendsResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            daily_trends:
+              type: array
+              items:
+                type: object
+                properties:
+                  date: {type: string, format: date}
+                  bet_count: {type: integer}
+                  turnover: {type: string}
+                  won_count: {type: integer}
+                  lost_count: {type: integer}
+                  refund_count: {type: integer}
+                  paid_out_count: {type: integer}
+        errors:
+          type: object
+          nullable: true
+
+    AnalyticsStatusDistributionResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            status_distribution:
+              type: object
+              properties:
+                total_bets: {type: integer}
+                status: {$ref: '#/components/schemas/AnalyticsBucketList'}
+                bet_result_status: {$ref: '#/components/schemas/AnalyticsBucketList'}
+                payout_status: {$ref: '#/components/schemas/AnalyticsBucketList'}
+        errors:
+          type: object
+          nullable: true
+
+    AnalyticsBucketList:
+      type: array
+      items:
+        type: object
+        properties:
+          value: {type: string}
+          count: {type: integer}
+          percentage: {type: number, format: float}
+
+    AnalyticsPayoutsResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            payouts:
+              type: object
+              properties:
+                payout_count: {type: integer}
+                paid_out_total_amount: {type: string}
+                avg_payout_per_bet: {type: string}
+                by_admin:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      admin_user_id: {type: integer, nullable: true}
+                      admin_name: {type: string, nullable: true}
+                      payout_count: {type: integer}
+                      paid_out_total_amount: {type: string}
+                daily_timeline:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      date: {type: string, format: date}
+                      payout_count: {type: integer}
+                      paid_out_total_amount: {type: string}
+        errors:
+          type: object
+          nullable: true
+
+    AnalyticsTopNumbersResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            top_numbers:
+              type: array
+              items:
+                type: object
+                properties:
+                  number: {type: integer}
+                  bet_frequency: {type: integer}
+                  distinct_user_count: {type: integer}
+                  total_stake: {type: string}
+        errors:
+          type: object
+          nullable: true
+
+    AnalyticsSettlementRunsResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            settlement_runs:
+              type: object
+              properties:
+                total_runs: {type: integer}
+                completed_runs: {type: integer}
+                pending_runs: {type: integer}
+                summary_totals:
+                  type: object
+                  properties:
+                    processed: {type: integer}
+                    won: {type: integer}
+                    lost: {type: integer}
+                runs:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      history_id: {type: string}
+                      stock_date: {type: string, format: date, nullable: true}
+                      open_time: {type: string, nullable: true}
+                      twod: {type: string, nullable: true}
+                      settled_at: {type: string, format: date-time, nullable: true}
+                      created_at: {type: string, format: date-time}
+                      summary:
+                        type: object
+                        additionalProperties: true
+        errors:
+          type: object
+          nullable: true
+
+    BetListResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            bets:
+              type: array
+              items:
+                $ref: '#/components/schemas/Bet'
+        errors:
+          type: object
+          nullable: true
+
+    BetItemResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            bet:
+              $ref: '#/components/schemas/Bet'
+        errors:
+          type: object
+          nullable: true
+
+    BetNotFoundResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Bet not found.
+        data:
+          type: object
+          nullable: true
+        errors:
+          type: object
+          properties:
+            bet:
+              type: array
+              items:
+                type: string
+              example: [The selected bet is invalid.]
+
+    BetDeleteConflictResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Bet cannot be deleted.
+        data:
+          type: object
+          nullable: true
+        errors:
+          type: object
+          properties:
+            bet:
+              type: array
+              items:
+                type: string
+              example: [This bet has dependent results and cannot be deleted.]

@@ -1,0 +1,225 @@
+export interface ApiEnvelope<TData> {
+  message: string
+  data: TData | null
+  errors: Record<string, string[]> | Record<string, unknown> | null
+}
+
+export interface User {
+  id: number
+  name: string
+  username: string | null
+  email: string
+  created_at: string
+  updated_at: string
+}
+
+export interface AuthData {
+  user: User
+  token: string
+}
+
+export interface BetNumber {
+  id: string
+  bet_id: string
+  number: number
+  created_at: string
+  updated_at: string
+}
+
+export interface BetFileMeta {
+  exists: boolean
+  download_url: string | null
+  file_name: string | null
+  mime_type: string | null
+  size: number | null
+}
+
+export type BetType = '2D' | '3D'
+export type TargetOpenTime = '11:00:00' | '12:01:00' | '15:00:00' | '16:30:00'
+export type BetStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'REFUNDED'
+export type BetResultStatus = 'OPEN' | 'WON' | 'LOST' | 'VOID'
+export type PayoutStatus = 'PENDING' | 'PAID_OUT'
+export type BetAdminStatus = 'ACCEPTED' | 'REJECTED' | 'REFUNDED'
+
+export interface Bet {
+  id: string
+  user_id: number
+  bet_slip: string
+  bet_type: BetType
+  target_opentime: TargetOpenTime
+  stock_date: string
+  amount: number
+  total_amount: string
+  status: BetStatus
+  bet_result_status: BetResultStatus
+  payout_status: PayoutStatus
+  paid_out_at: string | null
+  paid_out_by_user_id: number | null
+  payout_reference: string | null
+  payout_note: string | null
+  placed_at: string | null
+  settled_at: string | null
+  settled_result_history_id: string | null
+  bet_numbers: BetNumber[]
+  pay_slip: BetFileMeta
+  payout_proof: BetFileMeta
+  created_at: string
+  updated_at: string
+}
+
+export interface LoginRequest {
+  email: string
+  password: string
+}
+
+export interface BetStorePayload {
+  paySlipImage: File
+  betType: BetType
+  targetOpenTime: TargetOpenTime
+  amount: number
+  betNumbers: number[]
+}
+
+export interface BetUpdatePayload {
+  betType?: BetType
+  targetOpenTime?: TargetOpenTime
+  amount?: number
+  betNumbers?: number[]
+}
+
+export interface BetPayoutPayload {
+  payoutProofImage: File
+  payoutReference?: string
+  payoutNote?: string
+}
+
+export interface BetAdminStatusUpdatePayload {
+  status: BetAdminStatus
+}
+
+export interface BetListData {
+  bets: Bet[]
+}
+
+export interface BetItemData {
+  bet: Bet
+}
+
+export interface AnalyticsFilters {
+  dateFrom?: string
+  dateTo?: string
+  targetOpenTime?: TargetOpenTime
+  betType?: BetType
+  adminUserId?: number
+  limit?: number
+}
+
+export interface AnalyticsKpis {
+  total_bets: number
+  unique_bettors: number
+  total_turnover: string
+  accepted_count: number
+  rejected_count: number
+  refunded_count: number
+  won_count: number
+  lost_count: number
+  void_count: number
+  paid_out_count: number
+}
+
+export interface AnalyticsKpisData {
+  kpis: AnalyticsKpis
+}
+
+export interface AnalyticsDailyTrendItem {
+  date: string
+  bet_count: number
+  turnover: string
+  won_count: number
+  lost_count: number
+  refund_count: number
+  paid_out_count: number
+}
+
+export interface AnalyticsDailyTrendsData {
+  daily_trends: AnalyticsDailyTrendItem[]
+}
+
+export interface AnalyticsBucketItem {
+  value: string
+  count: number
+  percentage: number
+}
+
+export interface AnalyticsStatusDistribution {
+  total_bets: number
+  status: AnalyticsBucketItem[]
+  bet_result_status: AnalyticsBucketItem[]
+  payout_status: AnalyticsBucketItem[]
+}
+
+export interface AnalyticsStatusDistributionData {
+  status_distribution: AnalyticsStatusDistribution
+}
+
+export interface AnalyticsPayoutByAdminItem {
+  admin_user_id: number | null
+  admin_name: string | null
+  payout_count: number
+  paid_out_total_amount: string
+}
+
+export interface AnalyticsPayoutTimelineItem {
+  date: string
+  payout_count: number
+  paid_out_total_amount: string
+}
+
+export interface AnalyticsPayouts {
+  payout_count: number
+  paid_out_total_amount: string
+  avg_payout_per_bet: string
+  by_admin: AnalyticsPayoutByAdminItem[]
+  daily_timeline: AnalyticsPayoutTimelineItem[]
+}
+
+export interface AnalyticsPayoutsData {
+  payouts: AnalyticsPayouts
+}
+
+export interface AnalyticsTopNumberItem {
+  number: number
+  bet_frequency: number
+  distinct_user_count: number
+  total_stake: string
+}
+
+export interface AnalyticsTopNumbersData {
+  top_numbers: AnalyticsTopNumberItem[]
+}
+
+export interface AnalyticsSettlementRunItem {
+  history_id: string
+  stock_date: string | null
+  open_time: string | null
+  twod: string | null
+  settled_at: string | null
+  created_at: string
+  summary: Record<string, unknown>
+}
+
+export interface AnalyticsSettlementRuns {
+  total_runs: number
+  completed_runs: number
+  pending_runs: number
+  summary_totals: {
+    processed: number
+    won: number
+    lost: number
+  }
+  runs: AnalyticsSettlementRunItem[]
+}
+
+export interface AnalyticsSettlementRunsData {
+  settlement_runs: AnalyticsSettlementRuns
+}
