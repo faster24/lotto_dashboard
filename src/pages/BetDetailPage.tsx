@@ -1,7 +1,5 @@
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined'
 import DownloadOutlinedIcon from '@mui/icons-material/DownloadOutlined'
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
-import PaidOutlinedIcon from '@mui/icons-material/PaidOutlined'
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
 import {
   Alert,
@@ -14,7 +12,8 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  MenuItem,
+  Tab,
+  Tabs,
   Stack,
   TextField,
   Typography,
@@ -30,8 +29,7 @@ import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'rea
 import { betsApi } from '../api/betsApi.ts'
 import { ApiError } from '../lib/apiClient.ts'
 import { useAuthStore } from '../stores/authStore.ts'
-import type { Bet, BetAdminStatus, BetType, TargetOpenTime } from '../types/api.ts'
-import { betTypes, targetOpenTimes } from '../constants/betOptions.ts'
+import type { Bet, BetAdminStatus } from '../types/api.ts'
 import {
   adminTransitions,
   getAdminTransitionLabel,
@@ -43,14 +41,6 @@ interface PreviewState {
   objectUrl: string
   contentType: string
 }
-
-const parseNumberList = (raw: string) =>
-  raw
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean)
-    .map((item) => Number(item))
-    .filter((number) => Number.isInteger(number) && number >= 0 && number <= 255)
 
 export function BetDetailPage() {
   const { betId = '' } = useParams()
@@ -69,16 +59,18 @@ export function BetDetailPage() {
   }>({ open: false, action: null })
   const [statusActionLoading, setStatusActionLoading] = useState(false)
 
-  const [editBetType, setEditBetType] = useState<BetType>('2D')
-  const [editTargetOpenTime, setEditTargetOpenTime] = useState<TargetOpenTime>('11:00:00')
-  const [editAmount, setEditAmount] = useState('1')
-  const [editNumbers, setEditNumbers] = useState('')
-
   const [payoutFile, setPayoutFile] = useState<File | null>(null)
   const [payoutReference, setPayoutReference] = useState('')
   const [payoutNote, setPayoutNote] = useState('')
 
-  const shouldShowPayoutForm = searchParams.get('action') === 'payout'
+  const [refundFile, setRefundFile] = useState<File | null>(null)
+  const [refundReference, setRefundReference] = useState('')
+  const [refundNote, setRefundNote] = useState('')
+  const [refundPreviewUrl, setRefundPreviewUrl] = useState<string | null>(null)
+
+  const [actionTab, setActionTab] = useState<'payout' | 'refund'>(
+    searchParams.get('action') === 'refund' ? 'refund' : 'payout',
+  )
 
   const refreshBet = useCallback(async () => {
     if (!token || !betId) return
@@ -86,14 +78,7 @@ export function BetDetailPage() {
       setLoading(true)
       setError(null)
       const response = await betsApi.getById(token, betId)
-      const responseBet = response.data?.bet ?? null
-      setBet(responseBet)
-      if (responseBet) {
-        setEditBetType(responseBet.bet_type)
-        setEditTargetOpenTime(responseBet.target_opentime)
-        setEditAmount(String(responseBet.amount))
-        setEditNumbers(responseBet.bet_numbers.map((entry) => entry.number).join(','))
-      }
+      setBet(response.data?.bet ?? null)
     } catch (requestError) {
       if (requestError instanceof ApiError) {
         setError(requestError.message)
@@ -116,6 +101,19 @@ export function BetDetailPage() {
       }
     }
   }, [previewState])
+
+  useEffect(() => {
+    const param = searchParams.get('action')
+    setActionTab(param === 'refund' ? 'refund' : 'payout')
+  }, [searchParams])
+
+  useEffect(() => {
+    return () => {
+      if (refundPreviewUrl) {
+        URL.revokeObjectURL(refundPreviewUrl)
+      }
+    }
+  }, [refundPreviewUrl])
 
   const betNumbersText = useMemo(
     () => bet?.bet_numbers.map((entry) => entry.number).join(', ') ?? '-',
@@ -153,41 +151,6 @@ export function BetDetailPage() {
     setPreviewState(null)
   }
 
-  const handleUpdate = async () => {
-    if (!token || !bet) return
-    const parsedAmount = Number(editAmount)
-    const parsedNumbers = parseNumberList(editNumbers)
-    if (!Number.isInteger(parsedAmount) || parsedAmount < 1) {
-      setError('Amount must be a valid integer.')
-      return
-    }
-    if (parsedNumbers.length === 0) {
-      setError('Enter at least one valid number.')
-      return
-    }
-    try {
-      setSubmitting(true)
-      setError(null)
-      const response = await betsApi.update(token, bet.id, {
-        betType: editBetType,
-        targetOpenTime: editTargetOpenTime,
-        amount: parsedAmount,
-        betNumbers: [...new Set(parsedNumbers)],
-      })
-      if (response.data?.bet) {
-        setBet(response.data.bet)
-      }
-    } catch (requestError) {
-      if (requestError instanceof ApiError) {
-        setError(requestError.message)
-      } else {
-        setError('Unable to update bet.')
-      }
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
   const handleDelete = async () => {
     if (!token || !bet) return
     try {
@@ -206,7 +169,17 @@ export function BetDetailPage() {
     }
   }
 
+  const handleActionTabChange = (_event: unknown, value: 'payout' | 'refund') => {
+    setActionTab(value)
+    setSearchParams(value === 'payout' ? {} : { action: value })
+  }
+
   const openStatusDialog = (action: BetAdminStatus) => {
+    if (action === 'REFUNDED') {
+      setActionTab('refund')
+      setSearchParams({ action: 'refund' })
+      return
+    }
     setStatusDialog({ open: true, action })
   }
 
@@ -242,6 +215,28 @@ export function BetDetailPage() {
     setPayoutFile(selectedFile)
   }
 
+  const handleRefundFile = (event: ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0] ?? null
+    if (refundPreviewUrl) {
+      URL.revokeObjectURL(refundPreviewUrl)
+      setRefundPreviewUrl(null)
+    }
+    setRefundFile(selectedFile)
+    if (selectedFile) {
+      setRefundPreviewUrl(URL.createObjectURL(selectedFile))
+    }
+  }
+
+  const resetRefundForm = () => {
+    if (refundPreviewUrl) {
+      URL.revokeObjectURL(refundPreviewUrl)
+      setRefundPreviewUrl(null)
+    }
+    setRefundFile(null)
+    setRefundReference('')
+    setRefundNote('')
+  }
+
   const handlePayout = async () => {
     if (!token || !bet || !payoutFile) {
       setError('Payout proof image is required.')
@@ -267,6 +262,35 @@ export function BetDetailPage() {
         setError(requestError.message)
       } else {
         setError('Unable to payout this bet.')
+      }
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleRefund = async () => {
+    if (!token || !bet || !refundFile) {
+      setError('Refund proof image is required.')
+      return
+    }
+    try {
+      setSubmitting(true)
+      setError(null)
+      const response = await betsApi.refund(token, bet.id, {
+        payoutProofImage: refundFile,
+        payoutReference: refundReference.trim() || undefined,
+        payoutNote: refundNote.trim() || undefined,
+      })
+      if (response.data?.bet) {
+        setBet(response.data.bet)
+      }
+      resetRefundForm()
+      setSearchParams({})
+    } catch (requestError) {
+      if (requestError instanceof ApiError) {
+        setError(requestError.message)
+      } else {
+        setError('Unable to refund this bet.')
       }
     } finally {
       setSubmitting(false)
@@ -375,121 +399,139 @@ export function BetDetailPage() {
             </Card>
           )}
 
-          {!isAdmin && (
-            <Card>
-              <CardContent>
-                <Stack spacing={2}>
-                  <Stack direction="row" spacing={1} alignItems="center">
-                    <EditOutlinedIcon />
-                    <Typography variant="h6">Edit Bet</Typography>
-                  </Stack>
-                  <TextField
-                    select
-                    label="Bet Type"
-                    value={editBetType}
-                    onChange={(event) => setEditBetType(event.target.value as BetType)}
-                  >
-                    {betTypes.map((option) => (
-                      <MenuItem key={option} value={option}>
-                        {option}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                  <TextField
-                    select
-                    label="Target Open Time"
-                    value={editTargetOpenTime}
-                    onChange={(event) =>
-                      setEditTargetOpenTime(event.target.value as TargetOpenTime)
-                    }
-                  >
-                    {targetOpenTimes.map((option) => (
-                      <MenuItem key={option} value={option}>
-                        {option}
-                      </MenuItem>
-                    ))}
-                  </TextField>
-                  <TextField
-                    label="Amount"
-                    type="number"
-                    inputProps={{ min: 1, step: 1 }}
-                    value={editAmount}
-                    onChange={(event) => setEditAmount(event.target.value)}
-                  />
-                  <TextField
-                    label="Numbers (comma separated)"
-                    value={editNumbers}
-                    onChange={(event) => setEditNumbers(event.target.value)}
-                  />
-                  <Button variant="contained" onClick={() => void handleUpdate()} disabled={submitting}>
-                    Save Changes
-                  </Button>
-                </Stack>
-              </CardContent>
-            </Card>
-          )}
-
           <Card>
             <CardContent>
-              <Stack spacing={2}>
-                <Stack direction="row" spacing={1} alignItems="center">
-                  <PaidOutlinedIcon />
-                  <Typography variant="h6">Payout Action</Typography>
-                </Stack>
-                {!isAdmin && (
-                  <Alert severity="info">
-                    Admin claim is not detected; API may reject payout, but action is enabled for UI testing.
-                  </Alert>
-                )}
-                {bet.bet_result_status !== 'WON' || bet.payout_status !== 'PENDING' ? (
-                  <Alert severity="warning">
-                    This bet is not in `WON + PENDING` state. API may return conflict/validation errors.
-                  </Alert>
-                ) : null}
-                {shouldShowPayoutForm ? (
-                  <>
-                    <Button component="label" variant="outlined">
-                      {payoutFile ? payoutFile.name : 'Upload Payout Proof'}
-                      <input hidden type="file" accept="image/*" onChange={handlePayoutFile} />
-                    </Button>
-                    <TextField
-                      label="Payout Reference"
-                      value={payoutReference}
-                      onChange={(event) => setPayoutReference(event.target.value)}
-                    />
-                    <TextField
-                      label="Payout Note"
-                      value={payoutNote}
-                      onChange={(event) => setPayoutNote(event.target.value)}
-                      multiline
-                      minRows={3}
-                    />
-                    <Stack direction="row" spacing={1}>
-                      <Button
-                        variant="contained"
-                        onClick={() => void handlePayout()}
-                        disabled={submitting}
-                      >
-                        Submit Payout
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        onClick={() => setSearchParams({})}
-                        disabled={submitting}
-                      >
-                        Cancel
-                      </Button>
-                    </Stack>
-                  </>
-                ) : (
-                  <Button
-                    variant="contained"
-                    onClick={() => setSearchParams({ action: 'payout' })}
-                  >
-                    Open Payout Form
+              <Tabs value={actionTab} onChange={handleActionTabChange} aria-label="payout or refund tabs">
+                <Tab label="Payout" value="payout" />
+                <Tab label="Refund" value="refund" />
+              </Tabs>
+
+              {actionTab === 'payout' && (
+                <Stack spacing={2} sx={{ mt: 2 }}>
+                  {!isAdmin && (
+                    <Alert severity="info">
+                      Admin claim is not detected; API may reject payout, but action is enabled for UI testing.
+                    </Alert>
+                  )}
+                  {bet.bet_result_status !== 'WON' || bet.payout_status !== 'PENDING' ? (
+                    <Alert severity="warning">
+                      This bet is not in `WON + PENDING` state. API may return conflict/validation errors.
+                    </Alert>
+                  ) : null}
+                  <Button component="label" variant="outlined">
+                    {payoutFile ? payoutFile.name : 'Upload Payout Proof'}
+                    <input hidden type="file" accept="image/*" onChange={handlePayoutFile} />
                   </Button>
-                )}
-              </Stack>
+                  <TextField
+                    label="Payout Reference"
+                    value={payoutReference}
+                    onChange={(event) => setPayoutReference(event.target.value)}
+                  />
+                  <TextField
+                    label="Payout Note"
+                    value={payoutNote}
+                    onChange={(event) => setPayoutNote(event.target.value)}
+                    multiline
+                    minRows={3}
+                  />
+                  <Stack direction="row" spacing={1}>
+                    <Button
+                      variant="contained"
+                      onClick={() => void handlePayout()}
+                      disabled={submitting || !payoutFile}
+                    >
+                      Submit Payout
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      onClick={() => {
+                        setPayoutFile(null)
+                        setPayoutReference('')
+                        setPayoutNote('')
+                        setSearchParams({})
+                        setActionTab('payout')
+                      }}
+                      disabled={submitting}
+                    >
+                      Cancel
+                    </Button>
+                  </Stack>
+                </Stack>
+              )}
+
+              {actionTab === 'refund' && (
+                <Stack spacing={2} sx={{ mt: 2 }}>
+                  {!isAdminTransitionAllowed(bet, 'REFUNDED') && (
+                    <Alert severity="warning">
+                      Refund is unavailable because this bet is already refunded or paid out.
+                    </Alert>
+                  )}
+                  <Box
+                    component="label"
+                    sx={{
+                      border: '1px dashed',
+                      borderColor: 'divider',
+                      p: 2,
+                      borderRadius: 1,
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      bgcolor: 'background.paper',
+                    }}
+                  >
+                    <input hidden type="file" accept="image/*" onChange={handleRefundFile} />
+                    {refundPreviewUrl ? (
+                      <Box
+                        component="img"
+                        src={refundPreviewUrl}
+                        alt="Refund proof preview"
+                        sx={{ width: '100%', height: 'auto', maxHeight: 260, objectFit: 'contain' }}
+                      />
+                    ) : (
+                      <Typography>Click or drop to upload refund proof (required)</Typography>
+                    )}
+                    {refundFile && (
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                        {refundFile.name} • {(refundFile.size / 1024).toFixed(1)} KB
+                      </Typography>
+                    )}
+                  </Box>
+                  <TextField
+                    label="Refund Reference"
+                    value={refundReference}
+                    onChange={(event) => setRefundReference(event.target.value)}
+                  />
+                  <TextField
+                    label="Refund Note"
+                    value={refundNote}
+                    onChange={(event) => setRefundNote(event.target.value)}
+                    multiline
+                    minRows={3}
+                  />
+                  <Stack direction="row" spacing={1}>
+                    <Button
+                      variant="contained"
+                      onClick={() => void handleRefund()}
+                      disabled={submitting || !refundFile || !isAdminTransitionAllowed(bet, 'REFUNDED')}
+                    >
+                      Submit Refund
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      onClick={() => {
+                        resetRefundForm()
+                        setSearchParams({})
+                        setActionTab('payout')
+                      }}
+                      disabled={submitting}
+                    >
+                      Cancel
+                    </Button>
+                  </Stack>
+                  <Typography variant="body2" color="text.secondary">
+                    Refund uploads reuse the payout proof slot; preview/download remains under Payout Proof.
+                  </Typography>
+                </Stack>
+              )}
             </CardContent>
           </Card>
         </>

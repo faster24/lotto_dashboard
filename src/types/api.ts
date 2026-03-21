@@ -93,6 +93,8 @@ export interface BetPayoutPayload {
   payoutNote?: string
 }
 
+export type BetRefundPayload = BetPayoutPayload
+
 export interface BetAdminStatusUpdatePayload {
   status: BetAdminStatus
 }

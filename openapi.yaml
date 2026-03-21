@@ -848,6 +848,42 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationError'
 
+  /admin/bets/{bet}/refund:
+    post:
+      tags: [Bet]
+      summary: Refund bet with payout proof (admin)
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BetId'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/BetPayoutRequest'
+      responses:
+        '200':
+          description: Bet refunded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BetItemResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/BetNotFound'
+        '409':
+          description: Bet refund conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
 
 components:
   securitySchemes:
@@ -1346,7 +1382,7 @@ components:
           enum: [OPEN, WON, LOST, VOID]
         payout_status:
           type: string
-          enum: [PENDING, PAID_OUT]
+          enum: [PENDING, PAID_OUT, REFUNDED]
         paid_out_at:
           type: string
           format: date-time

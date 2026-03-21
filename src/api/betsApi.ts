@@ -4,6 +4,7 @@ import type {
   BetItemData,
   BetListData,
   BetPayoutPayload,
+  BetRefundPayload,
   BetStorePayload,
   BetUpdatePayload,
 } from '../types/api.ts'
@@ -28,7 +29,7 @@ const buildStoreFormData = (payload: BetStorePayload) => {
   return formData
 }
 
-const buildPayoutFormData = (payload: BetPayoutPayload) => {
+const buildPayoutFormData = (payload: BetPayoutPayload | BetRefundPayload) => {
   const formData = new FormData()
   formData.append('payout_proof_image', payload.payoutProofImage)
   if (payload.payoutReference) {
@@ -99,6 +100,13 @@ export const betsApi = {
 
   payout: (token: string, betId: string, payload: BetPayoutPayload) =>
     apiRequest<BetItemData>(`/admin/bets/${betId}/payout`, {
+      method: 'POST',
+      token,
+      body: buildPayoutFormData(payload),
+    }),
+
+  refund: (token: string, betId: string, payload: BetRefundPayload) =>
+    apiRequest<BetItemData>(`/admin/bets/${betId}/refund`, {
       method: 'POST',
       token,
       body: buildPayoutFormData(payload),

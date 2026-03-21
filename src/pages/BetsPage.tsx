@@ -3,6 +3,10 @@ import PaidOutlinedIcon from '@mui/icons-material/PaidOutlined'
 import RefreshOutlinedIcon from '@mui/icons-material/RefreshOutlined'
 import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined'
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
+import CheckCircleOutlineOutlinedIcon from '@mui/icons-material/CheckCircleOutlineOutlined'
+import BlockOutlinedIcon from '@mui/icons-material/BlockOutlined'
+import UndoOutlinedIcon from '@mui/icons-material/UndoOutlined'
+import MoreVertIcon from '@mui/icons-material/MoreVert'
 import {
   Alert,
   Box,
@@ -13,10 +17,13 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  IconButton,
   InputAdornment,
   MenuItem,
+  Menu,
   Paper,
   Select,
+  Tooltip,
   Stack,
   Table,
   TableBody,
@@ -26,24 +33,27 @@ import {
   TableRow,
   TextField,
   Typography,
+  Snackbar,
 } from '@mui/material'
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Link as RouterLink } from 'react-router-dom'
+import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
+import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type MouseEvent } from 'react'
+import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { betsApi } from '../api/betsApi.ts'
 import { ApiError } from '../lib/apiClient.ts'
 import { useAuthStore } from '../stores/authStore.ts'
 import type { Bet, BetAdminStatus, BetType } from '../types/api.ts'
 import {
-  adminTransitions,
   getAdminTransitionLabel,
   isAdminTransitionAllowed,
 } from '../utils/betTransitions.ts'
 
 const pageSizeOptions = [10, 20, 50]
+const formatBetId = (betId: string) => `${betId.slice(0, 8)}…${betId.slice(-6)}`
 
 export function BetsPage() {
   const token = useAuthStore((state) => state.token)
   const isAdmin = useAuthStore((state) => state.isAdmin)
+  const navigate = useNavigate()
   const [bets, setBets] = useState<Bet[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -57,6 +67,20 @@ export function BetsPage() {
     bet: Bet | null
     nextStatus: BetAdminStatus | null
   }>({ open: false, bet: null, nextStatus: null })
+  const [refundDialog, setRefundDialog] = useState<{ open: boolean; bet: Bet | null }>(
+    { open: false, bet: null },
+  )
+  const [refundFile, setRefundFile] = useState<File | null>(null)
+  const [refundPreviewUrl, setRefundPreviewUrl] = useState<string | null>(null)
+  const [refundReference, setRefundReference] = useState('')
+  const [refundNote, setRefundNote] = useState('')
+  const [refundSubmitting, setRefundSubmitting] = useState(false)
+  const [actionMenuAnchor, setActionMenuAnchor] = useState<null | HTMLElement>(null)
+  const [actionMenuBet, setActionMenuBet] = useState<Bet | null>(null)
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string }>({
+    open: false,
+    message: '',
+  })
 
   const loadBets = useCallback(async () => {
     if (!token) return
@@ -80,6 +104,14 @@ export function BetsPage() {
     void loadBets()
   }, [loadBets])
 
+  useEffect(() => {
+    return () => {
+      if (refundPreviewUrl) {
+        URL.revokeObjectURL(refundPreviewUrl)
+      }
+    }
+  }, [refundPreviewUrl])
+
   const visibleBets = useMemo(() => {
   return bets.filter((bet) => {
       if (betTypeFilter !== 'ALL' && bet.bet_type !== betTypeFilter) return false
@@ -93,12 +125,109 @@ export function BetsPage() {
     })
   }, [betTypeFilter, bets, searchText])
 
+  const isPayoutEligible = (bet: Bet) =>
+    bet.bet_result_status === 'WON' && bet.payout_status === 'PENDING'
+
+  const openRefundDialog = (bet: Bet) => {
+    if (refundPreviewUrl) {
+      URL.revokeObjectURL(refundPreviewUrl)
+      setRefundPreviewUrl(null)
+    }
+    setRefundDialog({ open: true, bet })
+    setRefundFile(null)
+    setRefundReference('')
+    setRefundNote('')
+  }
+
+  const closeRefundDialog = () => {
+    if (refundPreviewUrl) {
+      URL.revokeObjectURL(refundPreviewUrl)
+      setRefundPreviewUrl(null)
+    }
+    setRefundDialog({ open: false, bet: null })
+    setRefundFile(null)
+    setRefundReference('')
+    setRefundNote('')
+  }
+
   const openStatusDialog = (bet: Bet, nextStatus: BetAdminStatus) => {
+    if (nextStatus === 'REFUNDED') {
+      openRefundDialog(bet)
+      return
+    }
     setStatusDialog({ open: true, bet, nextStatus })
   }
 
   const closeStatusDialog = () => {
     setStatusDialog({ open: false, bet: null, nextStatus: null })
+  }
+
+  const openActionMenu = (event: MouseEvent<HTMLElement>, bet: Bet) => {
+    setActionMenuAnchor(event.currentTarget)
+    setActionMenuBet(bet)
+  }
+
+  const closeActionMenu = () => {
+    setActionMenuAnchor(null)
+    setActionMenuBet(null)
+  }
+
+  const copyBetId = async (betId: string) => {
+    try {
+      await navigator.clipboard.writeText(betId)
+      setSnackbar({ open: true, message: 'Bet ID copied' })
+    } catch {
+      setSnackbar({ open: true, message: 'Unable to copy Bet ID' })
+    }
+  }
+
+  const handleRefundFile = (event: ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0] ?? null
+    if (refundPreviewUrl) {
+      URL.revokeObjectURL(refundPreviewUrl)
+      setRefundPreviewUrl(null)
+    }
+    setRefundFile(selectedFile)
+    if (selectedFile) {
+      setRefundPreviewUrl(URL.createObjectURL(selectedFile))
+    }
+  }
+
+  const submitRefund = async () => {
+    if (!token || !refundDialog.bet || !refundFile) {
+      setError('Refund proof is required.')
+      return
+    }
+    if (!isAdminTransitionAllowed(refundDialog.bet, 'REFUNDED')) {
+      setError('Refund is not allowed for this bet.')
+      return
+    }
+    try {
+      setRefundSubmitting(true)
+      setError(null)
+      const response = await betsApi.refund(token, refundDialog.bet.id, {
+        payoutProofImage: refundFile,
+        payoutReference: refundReference.trim() || undefined,
+        payoutNote: refundNote.trim() || undefined,
+      })
+      const updatedBet = response.data?.bet
+      if (updatedBet) {
+        setBets((previousBets) =>
+          previousBets.map((item) => (item.id === updatedBet.id ? updatedBet : item)),
+        )
+      } else {
+        await loadBets()
+      }
+      closeRefundDialog()
+    } catch (requestError) {
+      if (requestError instanceof ApiError) {
+        setError(requestError.message)
+      } else {
+        setError('Failed to refund bet.')
+      }
+    } finally {
+      setRefundSubmitting(false)
+    }
   }
 
   const confirmStatusUpdate = async () => {
@@ -232,15 +361,37 @@ export function BetsPage() {
                 <TableCell>Status</TableCell>
                 <TableCell>Result</TableCell>
                 <TableCell>Payout</TableCell>
-                <TableCell>Admin Status</TableCell>
                 <TableCell align="right">Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {visibleBets.map((bet) => (
                 <TableRow key={bet.id} hover>
-                  <TableCell sx={{ fontFamily: '"Roboto Mono", monospace' }}>
-                    {bet.id.slice(0, 8)}…
+                  <TableCell sx={{ minWidth: 220 }}>
+                    <Stack direction="row" alignItems="center" spacing={0.5}>
+                      <Tooltip title={bet.id} arrow>
+                        <Typography
+                          component="code"
+                          sx={{
+                            fontFamily: '"Roboto Mono", monospace',
+                            whiteSpace: 'nowrap',
+                            fontSize: 13,
+                            letterSpacing: 0.2,
+                          }}
+                        >
+                          {formatBetId(bet.id)}
+                        </Typography>
+                      </Tooltip>
+                      <Tooltip title="Copy full Bet ID" arrow>
+                        <IconButton
+                          size="small"
+                          onClick={() => void copyBetId(bet.id)}
+                          aria-label={`copy bet id ${bet.id}`}
+                        >
+                          <ContentCopyOutlinedIcon fontSize="inherit" />
+                        </IconButton>
+                      </Tooltip>
+                    </Stack>
                   </TableCell>
                   <TableCell>{bet.bet_type}</TableCell>
                   <TableCell>{bet.target_opentime}</TableCell>
@@ -255,43 +406,41 @@ export function BetsPage() {
                     <Chip label={bet.payout_status} size="small" color="secondary" />
                   </TableCell>
                   <TableCell>
-                    <Stack direction="row" spacing={0.5}>
-                      {adminTransitions.map((transition) => (
-                        <Button
-                          key={transition}
-                          size="small"
-                          variant="outlined"
-                          onClick={() => openStatusDialog(bet, transition)}
-                          disabled={!isAdminTransitionAllowed(bet, transition)}
-                        >
-                          {getAdminTransitionLabel(transition)}
-                        </Button>
-                      ))}
+                    <Stack direction="row" justifyContent="flex-end" spacing={1} alignItems="center">
+                      <Button
+                        component={RouterLink}
+                        to={
+                          isPayoutEligible(bet)
+                            ? `/bets/${bet.id}?action=payout`
+                            : `/bets/${bet.id}`
+                        }
+                        size="small"
+                        variant="contained"
+                        color={isPayoutEligible(bet) ? 'secondary' : 'primary'}
+                        startIcon={
+                          isPayoutEligible(bet) ? <PaidOutlinedIcon fontSize="small" /> : <VisibilityOutlinedIcon />
+                        }
+                      >
+                        {isPayoutEligible(bet) ? 'Payout' : 'View'}
+                      </Button>
+                      <Tooltip title="All actions" arrow>
+                        <span>
+                          <IconButton
+                            size="small"
+                            onClick={(event) => openActionMenu(event, bet)}
+                            aria-label="actions menu"
+                          >
+                            <MoreVertIcon fontSize="small" />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
                     </Stack>
-                  </TableCell>
-                  <TableCell align="right">
-                    <Button
-                      component={RouterLink}
-                      to={`/bets/${bet.id}`}
-                      size="small"
-                      startIcon={<VisibilityOutlinedIcon />}
-                    >
-                      View
-                    </Button>
-                    <Button
-                      component={RouterLink}
-                      to={`/bets/${bet.id}?action=payout`}
-                      size="small"
-                      color="inherit"
-                    >
-                      Payout
-                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
               {visibleBets.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={9} align="center">
+                  <TableCell colSpan={8} align="center">
                     No bets found.
                   </TableCell>
                 </TableRow>
@@ -318,6 +467,149 @@ export function BetsPage() {
           Next
         </Button>
       </Stack>
+
+      <Dialog open={refundDialog.open} onClose={closeRefundDialog} fullWidth maxWidth="sm">
+        <DialogTitle>Refund bet {refundDialog.bet?.id.slice(0, 8) ?? '-'}</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <Alert severity="info">Refund marks the bet as REFUNDED and requires proof.</Alert>
+          {!refundDialog.bet || isAdminTransitionAllowed(refundDialog.bet, 'REFUNDED') ? null : (
+            <Alert severity="warning">Refund is not allowed for this bet.</Alert>
+          )}
+          <Box
+            component="label"
+            sx={{
+              border: '1px dashed',
+              borderColor: 'divider',
+              p: 2,
+              borderRadius: 1,
+              textAlign: 'center',
+              cursor: 'pointer',
+              bgcolor: 'background.paper',
+            }}
+          >
+            <input hidden type="file" accept="image/*" onChange={handleRefundFile} />
+            {refundPreviewUrl ? (
+              <Box
+                component="img"
+                src={refundPreviewUrl}
+                alt="Refund proof preview"
+                sx={{ width: '100%', height: 'auto', maxHeight: 260, objectFit: 'contain' }}
+              />
+            ) : (
+              <Typography>Click or drop to upload refund proof (required)</Typography>
+            )}
+            {refundFile && (
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                {refundFile.name} • {(refundFile.size / 1024).toFixed(1)} KB
+              </Typography>
+            )}
+          </Box>
+          <TextField
+            label="Refund Reference"
+            value={refundReference}
+            onChange={(event) => setRefundReference(event.target.value)}
+            fullWidth
+          />
+          <TextField
+            label="Refund Note"
+            value={refundNote}
+            onChange={(event) => setRefundNote(event.target.value)}
+            multiline
+            minRows={3}
+            fullWidth
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeRefundDialog} disabled={refundSubmitting}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => void submitRefund()}
+            disabled={
+              refundSubmitting ||
+              !refundFile ||
+              !refundDialog.bet ||
+              !isAdminTransitionAllowed(refundDialog.bet, 'REFUNDED')
+            }
+          >
+            {refundSubmitting ? 'Submitting…' : 'Submit Refund'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Menu
+        anchorEl={actionMenuAnchor}
+        open={Boolean(actionMenuAnchor)}
+        onClose={closeActionMenu}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+      >
+        <MenuItem
+          onClick={() => {
+            if (actionMenuBet) {
+              closeActionMenu()
+              navigate(`/bets/${actionMenuBet.id}`)
+            }
+          }}
+        >
+          <VisibilityOutlinedIcon fontSize="small" style={{ marginRight: 8 }} />
+          View
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (actionMenuBet) {
+              closeActionMenu()
+              navigate(`/bets/${actionMenuBet.id}?action=payout`)
+            }
+          }}
+          disabled={!(actionMenuBet && isPayoutEligible(actionMenuBet))}
+        >
+          <PaidOutlinedIcon fontSize="small" style={{ marginRight: 8 }} />
+          Payout
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (actionMenuBet) {
+              void copyBetId(actionMenuBet.id)
+            }
+            closeActionMenu()
+          }}
+        >
+          <ContentCopyOutlinedIcon fontSize="small" style={{ marginRight: 8 }} />
+          Copy Bet ID
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (actionMenuBet) openStatusDialog(actionMenuBet, 'ACCEPTED')
+            closeActionMenu()
+          }}
+          disabled={!(actionMenuBet && isAdminTransitionAllowed(actionMenuBet, 'ACCEPTED'))}
+        >
+          <CheckCircleOutlineOutlinedIcon fontSize="small" style={{ marginRight: 8 }} />
+          Accept
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (actionMenuBet) openStatusDialog(actionMenuBet, 'REJECTED')
+            closeActionMenu()
+          }}
+          disabled={!(actionMenuBet && isAdminTransitionAllowed(actionMenuBet, 'REJECTED'))}
+        >
+          <BlockOutlinedIcon fontSize="small" style={{ marginRight: 8 }} />
+          Reject
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            if (actionMenuBet) openStatusDialog(actionMenuBet, 'REFUNDED')
+            closeActionMenu()
+          }}
+          disabled={!(actionMenuBet && isAdminTransitionAllowed(actionMenuBet, 'REFUNDED'))}
+        >
+          <UndoOutlinedIcon fontSize="small" style={{ marginRight: 8 }} />
+          Refund
+        </MenuItem>
+      </Menu>
 
       <Dialog open={statusDialog.open} onClose={closeStatusDialog} fullWidth maxWidth="xs">
         <DialogTitle>Confirm Status Update</DialogTitle>
@@ -346,6 +638,13 @@ export function BetsPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={2000}
+        onClose={() => setSnackbar({ open: false, message: '' })}
+        message={snackbar.message}
+      />
     </Stack>
   )
 }
