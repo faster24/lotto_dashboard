@@ -42,6 +42,13 @@ interface PreviewState {
   contentType: string
 }
 
+const formatDateTime = (value: string | null) => {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleString()
+}
+
 export function BetDetailPage() {
   const { betId = '' } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -365,6 +372,95 @@ export function BetDetailPage() {
                 </Stack>
               </CardContent>
             </Card>
+
+          <Card>
+            <CardContent>
+              <Stack spacing={1.5}>
+                <Typography variant="h6">Bettor Profile</Typography>
+                {bet.user ? (
+                  <>
+                    <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} useFlexGap flexWrap="wrap">
+                      <Stack spacing={0.5}>
+                        <Typography variant="caption" color="text.secondary">
+                          User ID
+                        </Typography>
+                        <Typography>{bet.user.id}</Typography>
+                      </Stack>
+                      <Stack spacing={0.5}>
+                        <Typography variant="caption" color="text.secondary">
+                          Name
+                        </Typography>
+                        <Typography>{bet.user.name}</Typography>
+                      </Stack>
+                      <Stack spacing={0.5}>
+                        <Typography variant="caption" color="text.secondary">
+                          Username
+                        </Typography>
+                        <Typography>{bet.user.username ?? '-'}</Typography>
+                      </Stack>
+                      <Stack spacing={0.5}>
+                        <Typography variant="caption" color="text.secondary">
+                          Email
+                        </Typography>
+                        <Typography>{bet.user.email}</Typography>
+                      </Stack>
+                      <Stack spacing={0.5}>
+                        <Typography variant="caption" color="text.secondary">
+                          Status
+                        </Typography>
+                        <Typography>{bet.user.is_banned ? 'Banned' : 'Active'}</Typography>
+                      </Stack>
+                      <Stack spacing={0.5}>
+                        <Typography variant="caption" color="text.secondary">
+                          Registered At
+                        </Typography>
+                        <Typography>{formatDateTime(bet.user.created_at)}</Typography>
+                      </Stack>
+                    </Stack>
+
+                    <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 1.5, p: 1.5 }}>
+                      <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                        Wallet Bank Info
+                      </Typography>
+                      {bet.user.wallet ? (
+                        <Stack
+                          direction={{ xs: 'column', md: 'row' }}
+                          spacing={3}
+                          useFlexGap
+                          flexWrap="wrap"
+                        >
+                          <Stack spacing={0.5}>
+                            <Typography variant="caption" color="text.secondary">
+                              Bank
+                            </Typography>
+                            <Typography>{bet.user.wallet.bank_name}</Typography>
+                          </Stack>
+                          <Stack spacing={0.5}>
+                            <Typography variant="caption" color="text.secondary">
+                              Account Name
+                            </Typography>
+                            <Typography>{bet.user.wallet.account_name}</Typography>
+                          </Stack>
+                          <Stack spacing={0.5}>
+                            <Typography variant="caption" color="text.secondary">
+                              Account Number
+                            </Typography>
+                            <Typography sx={{ fontFamily: '"Roboto Mono", monospace' }}>
+                              {bet.user.wallet.account_number}
+                            </Typography>
+                          </Stack>
+                        </Stack>
+                      ) : (
+                        <Typography color="text.secondary">No wallet bank info found.</Typography>
+                      )}
+                    </Box>
+                  </>
+                ) : (
+                  <Alert severity="info">User profile is not available for this bet.</Alert>
+                )}
+              </Stack>
+            </CardContent>
+          </Card>
 
           {isAdmin && bet && (
             <Card>
