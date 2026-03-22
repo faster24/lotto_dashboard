@@ -1,4 +1,5 @@
 import AddCircleOutlineOutlinedIcon from '@mui/icons-material/AddCircleOutlineOutlined'
+import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined'
 import MenuIcon from '@mui/icons-material/Menu'
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined'
 import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined'
@@ -6,6 +7,7 @@ import LightModeOutlinedIcon from '@mui/icons-material/LightModeOutlined'
 import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined'
 import PaidOutlinedIcon from '@mui/icons-material/PaidOutlined'
 import QueryStatsOutlinedIcon from '@mui/icons-material/QueryStatsOutlined'
+import PeopleOutlineOutlinedIcon from '@mui/icons-material/PeopleOutlineOutlined'
 import {
   AppBar,
   Box,
@@ -36,6 +38,12 @@ const navItems: Array<{
   icon: ReactNode
 }> = [
   {
+    module: 'stats',
+    label: 'Stats',
+    path: '/stats',
+    icon: <QueryStatsOutlinedIcon />,
+  },
+  {
     module: 'bets',
     label: 'Bets',
     path: '/bets',
@@ -54,10 +62,16 @@ const navItems: Array<{
     icon: <PaidOutlinedIcon />,
   },
   {
-    module: 'stats',
-    label: 'Stats',
-    path: '/stats',
-    icon: <QueryStatsOutlinedIcon />,
+    module: 'results-2d',
+    label: '2D Results',
+    path: '/results/2d',
+    icon: <HistoryOutlinedIcon />,
+  },
+  {
+    module: 'users',
+    label: 'Users',
+    path: '/users',
+    icon: <PeopleOutlineOutlinedIcon />,
   },
 ]
 

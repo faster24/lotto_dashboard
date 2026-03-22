@@ -8,6 +8,8 @@ import { LoginPage } from './pages/LoginPage.tsx'
 import { NotFoundPage } from './pages/NotFoundPage.tsx'
 import { PayoutQueuePage } from './pages/PayoutQueuePage.tsx'
 import { StatsPage } from './pages/StatsPage.tsx'
+import { TwoDResultsPage } from './pages/TwoDResultsPage.tsx'
+import { UsersPage } from './pages/UsersPage.tsx'
 
 function App() {
   return (
@@ -15,12 +17,14 @@ function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
-          <Route path="/" element={<Navigate replace to="/bets" />} />
+          <Route path="/" element={<Navigate replace to="/stats" />} />
           <Route path="/bets" element={<BetsPage />} />
           <Route path="/bets/new" element={<BetCreatePage />} />
           <Route path="/bets/payout-queue" element={<PayoutQueuePage />} />
           <Route path="/bets/:betId" element={<BetDetailPage />} />
           <Route path="/stats" element={<StatsPage />} />
+          <Route path="/results/2d" element={<TwoDResultsPage />} />
+          <Route path="/users" element={<UsersPage />} />
         </Route>
       </Route>
       <Route path="*" element={<NotFoundPage />} />

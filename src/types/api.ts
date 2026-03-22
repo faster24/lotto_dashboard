@@ -9,13 +9,39 @@ export interface User {
   name: string
   username: string | null
   email: string
+  is_banned: boolean
+  banned_at: string | null
   created_at: string
   updated_at: string
+}
+
+export type WalletBankName = 'KBZ' | 'AYA' | 'CB' | 'UAB' | 'YOMA' | 'OTHER'
+
+export interface WalletBankInfo {
+  bank_name: WalletBankName
+  account_name: string
+  account_number: string
+}
+
+export interface AdminUser extends User {
+  bank_info: WalletBankInfo | null
+}
+
+export interface BetUserWithWallet extends User {
+  wallet: WalletBankInfo | null
 }
 
 export interface AuthData {
   user: User
   token: string
+}
+
+export interface AdminUserListData {
+  users: User[]
+}
+
+export interface AdminUserDetailData {
+  user: AdminUser
 }
 
 export interface BetNumber {
@@ -38,12 +64,13 @@ export type BetType = '2D' | '3D'
 export type TargetOpenTime = '11:00:00' | '12:01:00' | '15:00:00' | '16:30:00'
 export type BetStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'REFUNDED'
 export type BetResultStatus = 'OPEN' | 'WON' | 'LOST' | 'VOID'
-export type PayoutStatus = 'PENDING' | 'PAID_OUT'
+export type PayoutStatus = 'PENDING' | 'PAID_OUT' | 'REFUNDED'
 export type BetAdminStatus = 'ACCEPTED' | 'REJECTED' | 'REFUNDED'
 
 export interface Bet {
   id: string
   user_id: number
+  user: BetUserWithWallet | null
   bet_slip: string
   bet_type: BetType
   target_opentime: TargetOpenTime
@@ -105,6 +132,28 @@ export interface BetListData {
 
 export interface BetItemData {
   bet: Bet
+}
+
+export interface TwoDResult {
+  id: number
+  history_id: string
+  stock_date: string | null
+  stock_datetime: string | null
+  open_time: string | null
+  twod: string | null
+  set_index: string | null
+  value: string | null
+  payload: Record<string, unknown>
+  created_at: string
+  updated_at: string
+}
+
+export interface TwoDResultListData {
+  two_d_results: TwoDResult[]
+}
+
+export interface TwoDResultItemData {
+  two_d_result: TwoDResult | null
 }
 
 export interface AnalyticsFilters {
