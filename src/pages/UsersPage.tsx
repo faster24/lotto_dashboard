@@ -129,7 +129,7 @@ export function UsersPage() {
     if (!normalizedQuery) return users
 
     return users.filter((user) => {
-      const searchable = `${user.name} ${user.email} ${user.username ?? ''}`.toLowerCase()
+      const searchable = `${user.email} ${user.username ?? ''}`.toLowerCase()
       return searchable.includes(normalizedQuery)
     })
   }, [query, users])
@@ -238,7 +238,7 @@ export function UsersPage() {
           setPage(1)
           setQuery(event.target.value)
         }}
-        placeholder="Search by name, email, or username"
+        placeholder="Search by email or username"
         InputProps={{
           startAdornment: (
             <InputAdornment position="start">
@@ -252,7 +252,6 @@ export function UsersPage() {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>Name</TableCell>
               <TableCell>Email</TableCell>
               <TableCell>Username</TableCell>
               <TableCell>Status</TableCell>
@@ -263,7 +262,7 @@ export function UsersPage() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={6} align="center">
+                <TableCell colSpan={5} align="center">
                   <Stack direction="row" spacing={1} alignItems="center" justifyContent="center">
                     <CircularProgress size={18} />
                     <Typography variant="body2">Loading users...</Typography>
@@ -280,10 +279,9 @@ export function UsersPage() {
                     cursor: 'pointer',
                     '&:hover .view-user-action': {
                       opacity: 1,
-                    },
-                  }}
-                >
-                  <TableCell>{user.name}</TableCell>
+                  },
+                }}
+              >
                   <TableCell>{user.email}</TableCell>
                   <TableCell>{user.username ?? 'N/A'}</TableCell>
                   <TableCell>
@@ -313,7 +311,7 @@ export function UsersPage() {
             )}
             {!loading && filteredUsers.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} align="center">
+                <TableCell colSpan={5} align="center">
                   No users found.
                 </TableCell>
               </TableRow>

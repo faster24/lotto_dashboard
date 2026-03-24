@@ -36,7 +36,7 @@ import {
   Snackbar,
 } from '@mui/material'
 import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
-import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type MouseEvent } from 'react'
+import { useCallback, useDeferredValue, useEffect, useMemo, useState, type ChangeEvent, type MouseEvent } from 'react'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { betsApi } from '../api/betsApi.ts'
 import { ApiError } from '../lib/apiClient.ts'
@@ -49,6 +49,11 @@ import {
 
 const pageSizeOptions = [10, 20, 50]
 const formatBetId = (betId: string) => `${betId.slice(0, 8)}…${betId.slice(-6)}`
+const getReviewChipColor = (status: Bet['status']) => {
+  if (status === 'ACCEPTED') return 'success'
+  if (status === 'REJECTED' || status === 'REFUNDED') return 'error'
+  return 'warning'
+}
 
 export function BetsPage() {
   const token = useAuthStore((state) => state.token)
@@ -61,6 +66,7 @@ export function BetsPage() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [searchText, setSearchText] = useState('')
+  const deferredSearchText = useDeferredValue(searchText)
   const [betTypeFilter, setBetTypeFilter] = useState<'ALL' | BetType>('ALL')
   const [statusDialog, setStatusDialog] = useState<{
     open: boolean
@@ -115,18 +121,25 @@ export function BetsPage() {
   const visibleBets = useMemo(() => {
   return bets.filter((bet) => {
       if (betTypeFilter !== 'ALL' && bet.bet_type !== betTypeFilter) return false
-      if (!searchText.trim()) return true
-      const query = searchText.trim().toLowerCase()
+      if (!deferredSearchText.trim()) return true
+      const query = deferredSearchText.trim().toLowerCase()
       return (
         bet.id.toLowerCase().includes(query) ||
         bet.status.toLowerCase().includes(query) ||
         bet.bet_result_status.toLowerCase().includes(query)
       )
     })
-  }, [betTypeFilter, bets, searchText])
+  }, [betTypeFilter, bets, deferredSearchText])
 
   const isPayoutEligible = (bet: Bet) =>
     bet.bet_result_status === 'WON' && bet.payout_status === 'PENDING'
+
+  const quickStats = useMemo(() => {
+    const pendingReviewCount = bets.filter((bet) => bet.status === 'PENDING').length
+    const acceptedCount = bets.filter((bet) => bet.status === 'ACCEPTED').length
+    const payoutQueueCount = bets.filter(isPayoutEligible).length
+    return { pendingReviewCount, acceptedCount, payoutQueueCount }
+  }, [bets])
 
   const openRefundDialog = (bet: Bet) => {
     if (refundPreviewUrl) {
@@ -260,87 +273,122 @@ export function BetsPage() {
 
   return (
     <Stack spacing={3}>
-      <Stack
-        direction={{ xs: 'column', md: 'row' }}
-        spacing={1.5}
-        justifyContent="space-between"
-        alignItems={{ xs: 'stretch', md: 'center' }}
+      <Paper
+        variant="outlined"
+        sx={{
+          p: { xs: 2, md: 2.5 },
+          borderColor: 'info.light',
+          background:
+            'linear-gradient(130deg, rgba(37,99,235,0.14) 0%, rgba(59,130,246,0.06) 45%, rgba(249,115,22,0.12) 100%)',
+        }}
       >
-        <Box>
-          <Typography variant="h4">Bets</Typography>
-          <Typography color="text.secondary">
-            Admin list and review actions from `/admin/bets`.
-          </Typography>
-        </Box>
-        <Stack direction="row" spacing={1.25}>
-          <Button
-            component={RouterLink}
-            to="/bets/new"
-            variant="contained"
-            startIcon={<AddOutlinedIcon />}
-            disabled={isAdmin}
+        <Stack spacing={2}>
+          <Stack
+            direction={{ xs: 'column', md: 'row' }}
+            spacing={1.5}
+            justifyContent="space-between"
+            alignItems={{ xs: 'stretch', md: 'center' }}
           >
-            Create Bet
-          </Button>
-          <Button
-            component={RouterLink}
-            to="/bets/payout-queue"
-            variant="outlined"
-            startIcon={<PaidOutlinedIcon />}
-          >
-            Payout Queue
-          </Button>
-          <Button
-            variant="outlined"
-            onClick={() => void loadBets()}
-            startIcon={<RefreshOutlinedIcon />}
-          >
-            Refresh
-          </Button>
-        </Stack>
-      </Stack>
+            <Box>
+              <Typography variant="h4">Bets</Typography>
+              <Typography color="text.secondary">
+                Admin list and review actions from <code>/admin/bets</code>.
+              </Typography>
+            </Box>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.25}>
+              <Button
+                component={RouterLink}
+                to="/bets/new"
+                variant="contained"
+                startIcon={<AddOutlinedIcon />}
+                disabled={isAdmin}
+              >
+                Create Bet
+              </Button>
+              <Button
+                component={RouterLink}
+                to="/bets/payout-queue"
+                variant="outlined"
+                startIcon={<PaidOutlinedIcon />}
+              >
+                Payout Queue
+              </Button>
+              <Button
+                variant="outlined"
+                onClick={() => void loadBets()}
+                startIcon={<RefreshOutlinedIcon />}
+              >
+                Refresh
+              </Button>
+            </Stack>
+          </Stack>
 
-      <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
-        <TextField
-          size="small"
-          placeholder="Search by UUID or status"
-          value={searchText}
-          onChange={(event) => setSearchText(event.target.value)}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchOutlinedIcon />
-              </InputAdornment>
-            ),
-          }}
-          fullWidth
-        />
-        <Select
-          size="small"
-          value={betTypeFilter}
-          onChange={(event) => setBetTypeFilter(event.target.value as 'ALL' | BetType)}
-          sx={{ minWidth: 160 }}
-        >
-          <MenuItem value="ALL">All Bet Types</MenuItem>
-          <MenuItem value="2D">2D</MenuItem>
-          <MenuItem value="3D">3D</MenuItem>
-        </Select>
-        <Select
-          size="small"
-          value={String(pageSize)}
-          onChange={(event) => {
-            setPage(1)
-            setPageSize(Number(event.target.value))
-          }}
-          sx={{ minWidth: 140 }}
-        >
-          {pageSizeOptions.map((option) => (
-            <MenuItem key={option} value={String(option)}>
-              {option} / page
-            </MenuItem>
-          ))}
-        </Select>
-      </Stack>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, minmax(0, 1fr))' },
+              gap: 1,
+            }}
+          >
+            <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 1.5 }}>
+              <Typography variant="caption" color="text.secondary">Pending Review</Typography>
+              <Typography variant="h6" fontWeight={700}>{quickStats.pendingReviewCount}</Typography>
+            </Paper>
+            <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 1.5 }}>
+              <Typography variant="caption" color="text.secondary">Accepted Bets</Typography>
+              <Typography variant="h6" fontWeight={700}>{quickStats.acceptedCount}</Typography>
+            </Paper>
+            <Paper variant="outlined" sx={{ p: 1.25, borderRadius: 1.5 }}>
+              <Typography variant="caption" color="text.secondary">Payout Candidates</Typography>
+              <Typography variant="h6" fontWeight={700}>{quickStats.payoutQueueCount}</Typography>
+            </Paper>
+          </Box>
+        </Stack>
+      </Paper>
+
+      <Paper variant="outlined" sx={{ p: 1.5 }}>
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
+          <TextField
+            size="small"
+            placeholder="Search by UUID or status"
+            value={searchText}
+            onChange={(event) => setSearchText(event.target.value)}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchOutlinedIcon />
+                </InputAdornment>
+              ),
+            }}
+            fullWidth
+          />
+          <Select
+            size="small"
+            value={betTypeFilter}
+            onChange={(event) => setBetTypeFilter(event.target.value as 'ALL' | BetType)}
+            sx={{ minWidth: 160 }}
+          >
+            <MenuItem value="ALL">All Bet Types</MenuItem>
+            <MenuItem value="2D">2D</MenuItem>
+            <MenuItem value="3D">3D</MenuItem>
+          </Select>
+          <Select
+            size="small"
+            value={String(pageSize)}
+            onChange={(event) => {
+              setPage(1)
+              setPageSize(Number(event.target.value))
+            }}
+            sx={{ minWidth: 140 }}
+          >
+            {pageSizeOptions.map((option) => (
+              <MenuItem key={option} value={String(option)}>
+                {option} / page
+              </MenuItem>
+            ))}
+          </Select>
+        </Stack>
+      </Paper>
 
       {error && <Alert severity="error">{error}</Alert>}
 
@@ -366,7 +414,16 @@ export function BetsPage() {
             </TableHead>
             <TableBody>
               {visibleBets.map((bet) => (
-                <TableRow key={bet.id} hover>
+                <TableRow
+                  key={bet.id}
+                  hover
+                  sx={{
+                    '&:hover': {
+                      backgroundColor: 'action.hover',
+                    },
+                    transition: 'background-color 180ms ease',
+                  }}
+                >
                   <TableCell sx={{ minWidth: 220 }}>
                     <Stack direction="row" alignItems="center" spacing={0.5}>
                       <Tooltip title={bet.id} arrow>
@@ -397,7 +454,7 @@ export function BetsPage() {
                   <TableCell>{bet.target_opentime}</TableCell>
                   <TableCell>{bet.total_amount}</TableCell>
                   <TableCell>
-                    <Chip label={bet.status} size="small" variant="outlined" />
+                    <Chip label={bet.status} size="small" color={getReviewChipColor(bet.status)} variant="outlined" />
                   </TableCell>
                   <TableCell>
                     <Chip label={bet.bet_result_status} size="small" />
@@ -414,6 +471,7 @@ export function BetsPage() {
                             ? `/bets/${bet.id}?action=payout`
                             : `/bets/${bet.id}`
                         }
+                        state={{ bet }}
                         size="small"
                         variant="contained"
                         color={isPayoutEligible(bet) ? 'secondary' : 'primary'}
@@ -549,7 +607,7 @@ export function BetsPage() {
           onClick={() => {
             if (actionMenuBet) {
               closeActionMenu()
-              navigate(`/bets/${actionMenuBet.id}`)
+              navigate(`/bets/${actionMenuBet.id}`, { state: { bet: actionMenuBet } })
             }
           }}
         >
@@ -560,7 +618,7 @@ export function BetsPage() {
           onClick={() => {
             if (actionMenuBet) {
               closeActionMenu()
-              navigate(`/bets/${actionMenuBet.id}?action=payout`)
+              navigate(`/bets/${actionMenuBet.id}?action=payout`, { state: { bet: actionMenuBet } })
             }
           }}
           disabled={!(actionMenuBet && isPayoutEligible(actionMenuBet))}

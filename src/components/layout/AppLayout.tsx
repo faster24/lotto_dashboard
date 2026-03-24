@@ -68,6 +68,12 @@ const navItems: Array<{
     icon: <HistoryOutlinedIcon />,
   },
   {
+    module: 'results-3d',
+    label: '3D Results',
+    path: '/results/3d',
+    icon: <HistoryOutlinedIcon />,
+  },
+  {
     module: 'users',
     label: 'Users',
     path: '/users',

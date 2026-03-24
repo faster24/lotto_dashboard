@@ -1,6 +1,6 @@
 export type ThemeMode = 'light' | 'dark'
 export type UiDensity = 'comfortable' | 'compact'
-export type NavModule = 'bets' | 'create-bet' | 'payout-queue' | 'stats' | 'results-2d' | 'users'
+export type NavModule = 'bets' | 'create-bet' | 'payout-queue' | 'stats' | 'results-2d' | 'results-3d' | 'users'
 export type UserRole = 'Admin' | 'Editor' | 'Analyst'
 export type UserStatus = 'Active' | 'Invited' | 'Suspended'
 

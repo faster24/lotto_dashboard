@@ -1,6 +1,8 @@
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined'
 import DownloadOutlinedIcon from '@mui/icons-material/DownloadOutlined'
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined'
+import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined'
+import RefreshOutlinedIcon from '@mui/icons-material/RefreshOutlined'
 import {
   Alert,
   Box,
@@ -8,14 +10,17 @@ import {
   Card,
   CardContent,
   Chip,
+  IconButton,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
+  Snackbar,
   Tab,
   Tabs,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material'
 import {
@@ -25,7 +30,13 @@ import {
   useState,
   type ChangeEvent,
 } from 'react'
-import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import {
+  Link as RouterLink,
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from 'react-router-dom'
 import { betsApi } from '../api/betsApi.ts'
 import { ApiError } from '../lib/apiClient.ts'
 import { useAuthStore } from '../stores/authStore.ts'
@@ -49,13 +60,44 @@ const formatDateTime = (value: string | null) => {
   return date.toLocaleString()
 }
 
+const isPayoutActionAllowed = (bet: Bet, isAdmin: boolean) =>
+  isAdmin &&
+  bet.status === 'ACCEPTED' &&
+  bet.bet_result_status === 'WON' &&
+  bet.payout_status === 'PENDING'
+
+const formatBetId = (id: string) => `${id.slice(0, 8)}…${id.slice(-6)}`
+
+const getReviewStatusChipColor = (status: Bet['status']) => {
+  if (status === 'ACCEPTED') return 'success'
+  if (status === 'REJECTED' || status === 'REFUNDED') return 'error'
+  return 'warning'
+}
+
+const getResultStatusChipColor = (status: Bet['bet_result_status']) => {
+  if (status === 'WON') return 'success'
+  if (status === 'LOST') return 'error'
+  return 'warning'
+}
+
+const getPayoutStatusChipColor = (status: Bet['payout_status']) => {
+  if (status === 'PAID_OUT') return 'success'
+  if (status === 'REFUNDED') return 'error'
+  return 'warning'
+}
+
 export function BetDetailPage() {
   const { betId = '' } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
+  const location = useLocation()
+  const locationState = location.state as { bet?: Bet } | null
+  const stateBet = locationState?.bet ?? null
   const navigate = useNavigate()
   const token = useAuthStore((state) => state.token)
   const isAdmin = useAuthStore((state) => state.isAdmin)
-  const [bet, setBet] = useState<Bet | null>(null)
+  const [bet, setBet] = useState<Bet | null>(() =>
+    stateBet && stateBet.id === betId ? stateBet : null,
+  )
   const [loading, setLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -78,9 +120,18 @@ export function BetDetailPage() {
   const [actionTab, setActionTab] = useState<'payout' | 'refund'>(
     searchParams.get('action') === 'refund' ? 'refund' : 'payout',
   )
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string }>({
+    open: false,
+    message: '',
+  })
 
   const refreshBet = useCallback(async () => {
     if (!token || !betId) return
+    if (isAdmin && stateBet && stateBet.id === betId) {
+      setBet(stateBet)
+      setError(null)
+      return
+    }
     try {
       setLoading(true)
       setError(null)
@@ -95,11 +146,17 @@ export function BetDetailPage() {
     } finally {
       setLoading(false)
     }
-  }, [betId, token])
+  }, [betId, isAdmin, stateBet, token])
 
   useEffect(() => {
     void refreshBet()
   }, [refreshBet])
+
+  useEffect(() => {
+    if (stateBet && stateBet.id === betId) {
+      setBet(stateBet)
+    }
+  }, [betId, stateBet])
 
   useEffect(() => {
     return () => {
@@ -181,6 +238,15 @@ export function BetDetailPage() {
     setSearchParams(value === 'payout' ? {} : { action: value })
   }
 
+  const copyBetId = async () => {
+    try {
+      await navigator.clipboard.writeText(betId)
+      setSnackbar({ open: true, message: 'Bet ID copied' })
+    } catch {
+      setSnackbar({ open: true, message: 'Unable to copy Bet ID' })
+    }
+  }
+
   const openStatusDialog = (action: BetAdminStatus) => {
     if (action === 'REFUNDED') {
       setActionTab('refund')
@@ -249,6 +315,10 @@ export function BetDetailPage() {
       setError('Payout proof image is required.')
       return
     }
+    if (!isPayoutActionAllowed(bet, isAdmin)) {
+      setError('Payout is only available for ACCEPTED + WON bets that are pending payout.')
+      return
+    }
     try {
       setSubmitting(true)
       setError(null)
@@ -310,37 +380,113 @@ export function BetDetailPage() {
 
   return (
     <Stack spacing={3}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center">
-        <Box>
-          <Typography variant="h4">Bet Detail</Typography>
-          <Typography color="text.secondary">
-            UUID: <code>{betId}</code>
-          </Typography>
-        </Box>
-        <Button component={RouterLink} to="/bets" variant="outlined">
-          Back to Bets
-        </Button>
-      </Stack>
+      <Card
+        variant="outlined"
+        sx={{
+          borderColor: 'info.light',
+          background:
+            'linear-gradient(135deg, rgba(14,165,233,0.12) 0%, rgba(56,189,248,0.06) 45%, rgba(249,115,22,0.10) 100%)',
+        }}
+      >
+        <CardContent>
+          <Stack
+            direction={{ xs: 'column', md: 'row' }}
+            justifyContent="space-between"
+            alignItems={{ xs: 'flex-start', md: 'center' }}
+            spacing={2}
+          >
+            <Stack spacing={0.75}>
+              <Typography variant="h4">Bet Detail</Typography>
+              <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
+                <Typography variant="body2" color="text.secondary">
+                  Bet ID:
+                </Typography>
+                <Tooltip title={betId} arrow>
+                  <Typography
+                    component="code"
+                    sx={{
+                      fontFamily: '"Roboto Mono", monospace',
+                      bgcolor: 'background.paper',
+                      px: 1,
+                      py: 0.5,
+                      borderRadius: 1,
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      fontSize: 13,
+                    }}
+                  >
+                    {formatBetId(betId)}
+                  </Typography>
+                </Tooltip>
+                <Tooltip title="Copy full Bet ID" arrow>
+                  <IconButton size="small" onClick={() => void copyBetId()} aria-label={`copy bet id ${betId}`}>
+                    <ContentCopyOutlinedIcon fontSize="inherit" />
+                  </IconButton>
+                </Tooltip>
+              </Stack>
+            </Stack>
+            <Stack direction="row" spacing={1}>
+              <Button
+                variant="outlined"
+                startIcon={<RefreshOutlinedIcon />}
+                onClick={() => void refreshBet()}
+                disabled={loading}
+              >
+                Refresh
+              </Button>
+              <Button component={RouterLink} to="/bets" variant="outlined">
+                Back to Bets
+              </Button>
+            </Stack>
+          </Stack>
+        </CardContent>
+      </Card>
 
       {error && <Alert severity="error">{error}</Alert>}
       {loading && <Typography>Loading bet…</Typography>}
 
       {bet && (
         <>
-          <Card>
+          <Card variant="outlined">
             <CardContent>
-              <Stack spacing={1.5}>
-                <Typography variant="h6">Current Bet Status</Typography>
+              <Stack spacing={2}>
+                <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                  Current Bet Status
+                </Typography>
                 <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                  <Chip label={`Review: ${bet.status}`} />
-                  <Chip label={`Result: ${bet.bet_result_status}`} />
-                  <Chip label={`Payout: ${bet.payout_status}`} color="secondary" />
+                  <Chip
+                    label={`Review: ${bet.status}`}
+                    color={getReviewStatusChipColor(bet.status)}
+                    variant="outlined"
+                  />
+                  <Chip label={`Result: ${bet.bet_result_status}`} color={getResultStatusChipColor(bet.bet_result_status)} />
+                  <Chip label={`Payout: ${bet.payout_status}`} color={getPayoutStatusChipColor(bet.payout_status)} />
                 </Stack>
-                <Typography>Type: {bet.bet_type}</Typography>
-                <Typography>Target Open Time: {bet.target_opentime}</Typography>
-                <Typography>Amount: {bet.total_amount}</Typography>
-                <Typography>Numbers: {betNumbersText}</Typography>
-                <Stack direction="row" spacing={1}>
+                <Box
+                  sx={{
+                    display: 'grid',
+                    gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
+                    gap: 1.25,
+                  }}
+                >
+                  <Box sx={{ p: 1.5, borderRadius: 1.5, border: '1px solid', borderColor: 'divider', bgcolor: 'background.default' }}>
+                    <Typography variant="caption" color="text.secondary">Bet Type</Typography>
+                    <Typography fontWeight={600}>{bet.bet_type}</Typography>
+                  </Box>
+                  <Box sx={{ p: 1.5, borderRadius: 1.5, border: '1px solid', borderColor: 'divider', bgcolor: 'background.default' }}>
+                    <Typography variant="caption" color="text.secondary">Target Open Time</Typography>
+                    <Typography fontWeight={600}>{bet.target_opentime}</Typography>
+                  </Box>
+                  <Box sx={{ p: 1.5, borderRadius: 1.5, border: '1px solid', borderColor: 'divider', bgcolor: 'background.default' }}>
+                    <Typography variant="caption" color="text.secondary">Amount</Typography>
+                    <Typography fontWeight={600}>{bet.total_amount}</Typography>
+                  </Box>
+                  <Box sx={{ p: 1.5, borderRadius: 1.5, border: '1px solid', borderColor: 'divider', bgcolor: 'background.default' }}>
+                    <Typography variant="caption" color="text.secondary">Numbers</Typography>
+                    <Typography fontWeight={600} sx={{ wordBreak: 'break-word' }}>{betNumbersText}</Typography>
+                  </Box>
+                </Box>
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
                   <Button
                     variant="outlined"
                     startIcon={<VisibilityOutlinedIcon />}
@@ -369,56 +515,73 @@ export function BetDetailPage() {
                     </Button>
                   )}
                 </Stack>
-                </Stack>
+              </Stack>
               </CardContent>
             </Card>
 
-          <Card>
+          <Card variant="outlined">
             <CardContent>
-              <Stack spacing={1.5}>
-                <Typography variant="h6">Bettor Profile</Typography>
+              <Stack spacing={2}>
+                <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                  Bettor Profile
+                </Typography>
                 {bet.user ? (
                   <>
-                    <Stack direction={{ xs: 'column', md: 'row' }} spacing={3} useFlexGap flexWrap="wrap">
-                      <Stack spacing={0.5}>
+                    <Box
+                      sx={{
+                        display: 'grid',
+                        gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))' },
+                        gap: 1.5,
+                      }}
+                    >
+                      <Stack spacing={0.5} sx={{ p: 1.5, borderRadius: 1.5, border: '1px solid', borderColor: 'divider' }}>
                         <Typography variant="caption" color="text.secondary">
                           User ID
                         </Typography>
                         <Typography>{bet.user.id}</Typography>
                       </Stack>
-                      <Stack spacing={0.5}>
+                      <Stack spacing={0.5} sx={{ p: 1.5, borderRadius: 1.5, border: '1px solid', borderColor: 'divider' }}>
                         <Typography variant="caption" color="text.secondary">
                           Name
                         </Typography>
                         <Typography>{bet.user.name}</Typography>
                       </Stack>
-                      <Stack spacing={0.5}>
+                      <Stack spacing={0.5} sx={{ p: 1.5, borderRadius: 1.5, border: '1px solid', borderColor: 'divider' }}>
                         <Typography variant="caption" color="text.secondary">
                           Username
                         </Typography>
                         <Typography>{bet.user.username ?? '-'}</Typography>
                       </Stack>
-                      <Stack spacing={0.5}>
+                      <Stack spacing={0.5} sx={{ p: 1.5, borderRadius: 1.5, border: '1px solid', borderColor: 'divider' }}>
                         <Typography variant="caption" color="text.secondary">
                           Email
                         </Typography>
                         <Typography>{bet.user.email}</Typography>
                       </Stack>
-                      <Stack spacing={0.5}>
+                      <Stack spacing={0.5} sx={{ p: 1.5, borderRadius: 1.5, border: '1px solid', borderColor: 'divider' }}>
                         <Typography variant="caption" color="text.secondary">
                           Status
                         </Typography>
                         <Typography>{bet.user.is_banned ? 'Banned' : 'Active'}</Typography>
                       </Stack>
-                      <Stack spacing={0.5}>
+                      <Stack spacing={0.5} sx={{ p: 1.5, borderRadius: 1.5, border: '1px solid', borderColor: 'divider' }}>
                         <Typography variant="caption" color="text.secondary">
                           Registered At
                         </Typography>
                         <Typography>{formatDateTime(bet.user.created_at)}</Typography>
                       </Stack>
-                    </Stack>
+                    </Box>
 
-                    <Box sx={{ border: 1, borderColor: 'divider', borderRadius: 1.5, p: 1.5 }}>
+                    <Box
+                      sx={{
+                        border: 1,
+                        borderColor: 'info.light',
+                        borderRadius: 1.5,
+                        p: 1.75,
+                        background:
+                          'linear-gradient(135deg, rgba(14,165,233,0.06) 0%, rgba(56,189,248,0.04) 100%)',
+                      }}
+                    >
                       <Typography variant="subtitle2" sx={{ mb: 1 }}>
                         Wallet Bank Info
                       </Typography>
@@ -463,15 +626,17 @@ export function BetDetailPage() {
           </Card>
 
           {isAdmin && bet && (
-            <Card>
+            <Card variant="outlined" sx={{ borderColor: 'warning.light' }}>
               <CardContent>
                 <Stack spacing={1.25}>
-                  <Typography variant="h6">Admin Review</Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 700 }}>
+                    Admin Review
+                  </Typography>
                   <Typography variant="body2" color="text.secondary">
                     Available actions call <code>PATCH /admin/bets/{'{bet}'}/status</code>. Buttons are
                     disabled unless the document allows the transition.
                   </Typography>
-                  <Stack direction="row" spacing={1} flexWrap="wrap">
+                  <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
                     {adminTransitions.map((transition) => (
                       <Button
                         key={transition}
@@ -495,7 +660,7 @@ export function BetDetailPage() {
             </Card>
           )}
 
-          <Card>
+          <Card variant="outlined">
             <CardContent>
               <Tabs value={actionTab} onChange={handleActionTabChange} aria-label="payout or refund tabs">
                 <Tab label="Payout" value="payout" />
@@ -503,60 +668,59 @@ export function BetDetailPage() {
               </Tabs>
 
               {actionTab === 'payout' && (
-                <Stack spacing={2} sx={{ mt: 2 }}>
-                  {!isAdmin && (
-                    <Alert severity="info">
-                      Admin claim is not detected; API may reject payout, but action is enabled for UI testing.
-                    </Alert>
-                  )}
-                  {bet.bet_result_status !== 'WON' || bet.payout_status !== 'PENDING' ? (
+                <Stack spacing={2} sx={{ mt: 2, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1.5 }}>
+                  {!isPayoutActionAllowed(bet, isAdmin) ? (
                     <Alert severity="warning">
-                      This bet is not in `WON + PENDING` state. API may return conflict/validation errors.
+                      Payout is available only when review status is <code>ACCEPTED</code>, result is{' '}
+                      <code>WON</code>, and payout status is <code>PENDING</code>.
                     </Alert>
-                  ) : null}
-                  <Button component="label" variant="outlined">
-                    {payoutFile ? payoutFile.name : 'Upload Payout Proof'}
-                    <input hidden type="file" accept="image/*" onChange={handlePayoutFile} />
-                  </Button>
-                  <TextField
-                    label="Payout Reference"
-                    value={payoutReference}
-                    onChange={(event) => setPayoutReference(event.target.value)}
-                  />
-                  <TextField
-                    label="Payout Note"
-                    value={payoutNote}
-                    onChange={(event) => setPayoutNote(event.target.value)}
-                    multiline
-                    minRows={3}
-                  />
-                  <Stack direction="row" spacing={1}>
-                    <Button
-                      variant="contained"
-                      onClick={() => void handlePayout()}
-                      disabled={submitting || !payoutFile}
-                    >
-                      Submit Payout
-                    </Button>
-                    <Button
-                      variant="outlined"
-                      onClick={() => {
-                        setPayoutFile(null)
-                        setPayoutReference('')
-                        setPayoutNote('')
-                        setSearchParams({})
-                        setActionTab('payout')
-                      }}
-                      disabled={submitting}
-                    >
-                      Cancel
-                    </Button>
-                  </Stack>
+                  ) : (
+                    <>
+                      <Button component="label" variant="outlined">
+                        {payoutFile ? payoutFile.name : 'Upload Payout Proof'}
+                        <input hidden type="file" accept="image/*" onChange={handlePayoutFile} />
+                      </Button>
+                      <TextField
+                        label="Payout Reference"
+                        value={payoutReference}
+                        onChange={(event) => setPayoutReference(event.target.value)}
+                      />
+                      <TextField
+                        label="Payout Note"
+                        value={payoutNote}
+                        onChange={(event) => setPayoutNote(event.target.value)}
+                        multiline
+                        minRows={3}
+                      />
+                      <Stack direction="row" spacing={1}>
+                        <Button
+                          variant="contained"
+                          onClick={() => void handlePayout()}
+                          disabled={submitting || !payoutFile}
+                        >
+                          Submit Payout
+                        </Button>
+                        <Button
+                          variant="outlined"
+                          onClick={() => {
+                            setPayoutFile(null)
+                            setPayoutReference('')
+                            setPayoutNote('')
+                            setSearchParams({})
+                            setActionTab('payout')
+                          }}
+                          disabled={submitting}
+                        >
+                          Cancel
+                        </Button>
+                      </Stack>
+                    </>
+                  )}
                 </Stack>
               )}
 
               {actionTab === 'refund' && (
-                <Stack spacing={2} sx={{ mt: 2 }}>
+                <Stack spacing={2} sx={{ mt: 2, p: 2, border: '1px solid', borderColor: 'divider', borderRadius: 1.5 }}>
                   {!isAdminTransitionAllowed(bet, 'REFUNDED') && (
                     <Alert severity="warning">
                       Refund is unavailable because this bet is already refunded or paid out.
@@ -632,6 +796,13 @@ export function BetDetailPage() {
           </Card>
         </>
       )}
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={2000}
+        onClose={() => setSnackbar({ open: false, message: '' })}
+        message={snackbar.message}
+      />
 
       <Dialog open={previewState !== null} onClose={closePreview} maxWidth="md" fullWidth>
         <DialogTitle>{previewState?.title}</DialogTitle>

@@ -156,6 +156,27 @@ export interface TwoDResultItemData {
   two_d_result: TwoDResult | null
 }
 
+export interface ThreeDResult {
+  id: number
+  stock_date: string
+  threed: string
+  created_at: string
+  updated_at: string
+}
+
+export interface ThreeDResultListData {
+  three_d_results: ThreeDResult[]
+}
+
+export interface ThreeDResultItemData {
+  three_d_result: ThreeDResult | null
+}
+
+export interface ThreeDResultWritePayload {
+  stockDate: string
+  threed: string
+}
+
 export interface AnalyticsFilters {
   dateFrom?: string
   dateTo?: string

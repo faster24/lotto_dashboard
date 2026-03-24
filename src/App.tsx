@@ -8,6 +8,7 @@ import { LoginPage } from './pages/LoginPage.tsx'
 import { NotFoundPage } from './pages/NotFoundPage.tsx'
 import { PayoutQueuePage } from './pages/PayoutQueuePage.tsx'
 import { StatsPage } from './pages/StatsPage.tsx'
+import { ThreeDResultsPage } from './pages/ThreeDResultsPage.tsx'
 import { TwoDResultsPage } from './pages/TwoDResultsPage.tsx'
 import { UsersPage } from './pages/UsersPage.tsx'
 
@@ -24,6 +25,7 @@ function App() {
           <Route path="/bets/:betId" element={<BetDetailPage />} />
           <Route path="/stats" element={<StatsPage />} />
           <Route path="/results/2d" element={<TwoDResultsPage />} />
+          <Route path="/results/3d" element={<ThreeDResultsPage />} />
           <Route path="/users" element={<UsersPage />} />
         </Route>
       </Route>
