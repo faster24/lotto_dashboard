@@ -177,6 +177,29 @@ export interface ThreeDResultWritePayload {
   threed: string
 }
 
+export interface OddSetting {
+  id: number
+  bet_type: BetType
+  odd: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface OddSettingListData {
+  odd_settings: OddSetting[]
+}
+
+export interface OddSettingItemData {
+  odd_setting: OddSetting | null
+}
+
+export interface OddSettingWritePayload {
+  betType: BetType
+  odd: number
+  isActive?: boolean
+}
+
 export interface AnalyticsFilters {
   dateFrom?: string
   dateTo?: string

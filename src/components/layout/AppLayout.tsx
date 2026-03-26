@@ -8,6 +8,7 @@ import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined'
 import PaidOutlinedIcon from '@mui/icons-material/PaidOutlined'
 import QueryStatsOutlinedIcon from '@mui/icons-material/QueryStatsOutlined'
 import PeopleOutlineOutlinedIcon from '@mui/icons-material/PeopleOutlineOutlined'
+import TuneOutlinedIcon from '@mui/icons-material/TuneOutlined'
 import {
   AppBar,
   Box,
@@ -72,6 +73,12 @@ const navItems: Array<{
     label: '3D Results',
     path: '/results/3d',
     icon: <HistoryOutlinedIcon />,
+  },
+  {
+    module: 'odds-settings',
+    label: 'Odds Settings',
+    path: '/settings/odds',
+    icon: <TuneOutlinedIcon />,
   },
   {
     module: 'users',
