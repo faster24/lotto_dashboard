@@ -127,7 +127,7 @@ export function BetDetailPage() {
 
   const refreshBet = useCallback(async () => {
     if (!token || !betId) return
-    if (isAdmin && stateBet && stateBet.id === betId) {
+    if (stateBet && stateBet.id === betId) {
       setBet(stateBet)
       setError(null)
       return
@@ -135,7 +135,12 @@ export function BetDetailPage() {
     try {
       setLoading(true)
       setError(null)
-      const response = await betsApi.getById(token, betId)
+      const response = isAdmin
+        ? await betsApi.getAdminById(token, betId)
+        : await betsApi.getById(token, betId)
+      if (import.meta.env.DEV) {
+        console.log('[BetDetailPage] bet detail payload', response)
+      }
       setBet(response.data?.bet ?? null)
     } catch (requestError) {
       if (requestError instanceof ApiError) {
@@ -157,6 +162,12 @@ export function BetDetailPage() {
       setBet(stateBet)
     }
   }, [betId, stateBet])
+
+  useEffect(() => {
+    if (error && import.meta.env.DEV) {
+      console.error('[BetDetailPage] request error', error)
+    }
+  }, [error])
 
   useEffect(() => {
     return () => {
@@ -442,7 +453,6 @@ export function BetDetailPage() {
         </CardContent>
       </Card>
 
-      {error && <Alert severity="error">{error}</Alert>}
       {loading && <Typography>Loading bet…</Typography>}
 
       {bet && (
@@ -536,18 +546,6 @@ export function BetDetailPage() {
                     >
                       <Stack spacing={0.5} sx={{ p: 1.5, borderRadius: 1.5, border: '1px solid', borderColor: 'divider' }}>
                         <Typography variant="caption" color="text.secondary">
-                          User ID
-                        </Typography>
-                        <Typography>{bet.user.id}</Typography>
-                      </Stack>
-                      <Stack spacing={0.5} sx={{ p: 1.5, borderRadius: 1.5, border: '1px solid', borderColor: 'divider' }}>
-                        <Typography variant="caption" color="text.secondary">
-                          Name
-                        </Typography>
-                        <Typography>{bet.user.name}</Typography>
-                      </Stack>
-                      <Stack spacing={0.5} sx={{ p: 1.5, borderRadius: 1.5, border: '1px solid', borderColor: 'divider' }}>
-                        <Typography variant="caption" color="text.secondary">
                           Username
                         </Typography>
                         <Typography>{bet.user.username ?? '-'}</Typography>
@@ -557,12 +555,6 @@ export function BetDetailPage() {
                           Email
                         </Typography>
                         <Typography>{bet.user.email}</Typography>
-                      </Stack>
-                      <Stack spacing={0.5} sx={{ p: 1.5, borderRadius: 1.5, border: '1px solid', borderColor: 'divider' }}>
-                        <Typography variant="caption" color="text.secondary">
-                          Status
-                        </Typography>
-                        <Typography>{bet.user.is_banned ? 'Banned' : 'Active'}</Typography>
                       </Stack>
                       <Stack spacing={0.5} sx={{ p: 1.5, borderRadius: 1.5, border: '1px solid', borderColor: 'divider' }}>
                         <Typography variant="caption" color="text.secondary">

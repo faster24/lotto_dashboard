@@ -14,6 +14,7 @@ tags:
   - name: Bet
   - name: Wallet
   - name: Announcement
+  - name: AppSetting
   - name: OddSetting
   - name: TwoDResult
   - name: ThreeDResult
@@ -174,6 +175,18 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthenticated'
 
+  /app-settings/maintenance:
+    get:
+      tags: [AppSetting]
+      summary: Get app maintenance setting (public)
+      responses:
+        '200':
+          description: Maintenance setting retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppMaintenanceSettingResponse'
+
   /bets:
     get:
       tags: [Bet]
@@ -269,6 +282,72 @@ paths:
           $ref: '#/components/responses/BetNotFound'
         '409':
           $ref: '#/components/responses/BetDeleteConflict'
+
+  /bets/accepted-payments:
+    get:
+      tags: [Bet]
+      summary: List accepted payment transitions for authenticated user
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: page_size
+          in: query
+          required: false
+          description: Page size clamped to [1,100]. Defaults to 10.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: Accepted payment transitions list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AcceptedPaymentListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
+  /bets/payout-history:
+    get:
+      tags: [Bet]
+      summary: List paid-out winning bets and refunded bets for authenticated user
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: page_size
+          in: query
+          required: false
+          description: Page size clamped to [1,100]. Defaults to 10.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        '200':
+          description: Payout history list (accepted+won+paid-out or refunded)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PayoutHistoryListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
 
   /bets/{bet}/pay-slip:
     get:
@@ -458,6 +537,22 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthenticated'
 
+  /two-d-results/last-5-days:
+    get:
+      tags: [TwoDResult]
+      summary: List 2D results for latest 5 stock dates (authenticated)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: 2D results from last 5 stock dates
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TwoDResultListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+
   /three-d-results:
     get:
       tags: [ThreeDResult]
@@ -554,6 +649,32 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AdminThaiStockLiveHealthResponse'
+
+  /admin/app-settings/maintenance:
+    put:
+      tags: [AppSetting]
+      summary: Update app maintenance setting (admin)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppMaintenanceSettingUpdateRequest'
+      responses:
+        '200':
+          description: Maintenance setting updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppMaintenanceSettingResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
 
   /admin/analytics/kpis:
     get:
@@ -1158,6 +1279,29 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
 
+  /admin/bets/{bet}:
+    get:
+      tags: [Bet]
+      summary: Get bet by id (admin)
+      description: Admin-scoped bet detail for direct links and refresh flows.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BetId'
+      responses:
+        '200':
+          description: Bet detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BetItemResponse'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/BetNotFound'
+
   /admin/bets/{bet}/status:
     patch:
       tags: [Bet]
@@ -1490,6 +1634,15 @@ components:
           type: string
           format: date-time
 
+    AppMaintenanceSetting:
+      type: object
+      properties:
+        is_enabled:
+          type: boolean
+        message:
+          type: string
+          nullable: true
+
     OddSetting:
       type: object
       properties:
@@ -1688,6 +1841,18 @@ components:
         description:
           type: string
 
+    AppMaintenanceSettingUpdateRequest:
+      type: object
+      required: [is_enabled]
+      additionalProperties: false
+      properties:
+        is_enabled:
+          type: boolean
+        message:
+          type: string
+          nullable: true
+          maxLength: 255
+
     OddSettingWriteRequest:
       type: object
       required: [bet_type, currency, user_type, odd]
@@ -1764,6 +1929,20 @@ components:
           properties:
             announcement:
               $ref: '#/components/schemas/Announcement'
+        errors:
+          type: object
+          nullable: true
+
+    AppMaintenanceSettingResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            maintenance:
+              $ref: '#/components/schemas/AppMaintenanceSetting'
         errors:
           type: object
           nullable: true
@@ -2025,6 +2204,10 @@ components:
         bet_slip:
           type: string
           format: uuid
+        transaction_id_last_two_digits:
+          type: string
+          pattern: '^\d{2}$'
+          example: '45'
         bet_type:
           type: string
           enum: ['2D', '3D']
@@ -2120,7 +2303,7 @@ components:
 
     BetStoreRequest:
       type: object
-      required: [pay_slip_image, bet_type, currency, target_opentime, bet_numbers]
+      required: [pay_slip_image, bet_type, currency, target_opentime, transaction_id_last_two_digits, bet_numbers]
       description: Client-writable fields only. Review/result/payout statuses are server-managed and rejected if supplied. Bet numbers must be objects with per-number amount.
       properties:
         pay_slip_image:
@@ -2139,6 +2322,10 @@ components:
           type: string
           enum: ['11:00:00', '12:01:00', '15:00:00', '16:30:00']
           description: Target stock market open time for this bet.
+        transaction_id_last_two_digits:
+          type: string
+          pattern: '^\d{2}$'
+          description: Required last two digits of the transaction ID (00-99).
         bet_numbers:
           type: array
           description: Array of objects {number, amount}. Leading-zero strings like 01/001 are accepted and normalized numerically.
@@ -2395,6 +2582,38 @@ components:
           type: object
           properties:
             bets:
+              type: array
+              items:
+                $ref: '#/components/schemas/Bet'
+        errors:
+          type: object
+          nullable: true
+
+    AcceptedPaymentListResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            accepted_payments:
+              type: array
+              items:
+                $ref: '#/components/schemas/Bet'
+        errors:
+          type: object
+          nullable: true
+
+    PayoutHistoryListResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        data:
+          type: object
+          properties:
+            payout_history:
               type: array
               items:
                 $ref: '#/components/schemas/Bet'

@@ -67,6 +67,12 @@ export const betsApi = {
       token,
     }),
 
+  getAdminById: (token: string, betId: string) =>
+    apiRequest<BetItemData>(`/admin/bets/${betId}`, {
+      method: 'GET',
+      token,
+    }),
+
   update: (token: string, betId: string, payload: BetUpdatePayload) =>
     apiRequest<BetItemData>(`/bets/${betId}`, {
       method: 'PUT',
