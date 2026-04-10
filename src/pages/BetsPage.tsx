@@ -1,4 +1,3 @@
-import AddOutlinedIcon from '@mui/icons-material/AddOutlined'
 import PaidOutlinedIcon from '@mui/icons-material/PaidOutlined'
 import RefreshOutlinedIcon from '@mui/icons-material/RefreshOutlined'
 import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined'
@@ -57,7 +56,6 @@ const getReviewChipColor = (status: Bet['status']) => {
 
 export function BetsPage() {
   const token = useAuthStore((state) => state.token)
-  const isAdmin = useAuthStore((state) => state.isAdmin)
   const navigate = useNavigate()
   const [bets, setBets] = useState<Bet[]>([])
   const [loading, setLoading] = useState(false)
@@ -296,15 +294,6 @@ export function BetsPage() {
               </Typography>
             </Box>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.25}>
-              <Button
-                component={RouterLink}
-                to="/bets/new"
-                variant="contained"
-                startIcon={<AddOutlinedIcon />}
-                disabled={isAdmin}
-              >
-                Create Bet
-              </Button>
               <Button
                 component={RouterLink}
                 to="/bets/payout-queue"

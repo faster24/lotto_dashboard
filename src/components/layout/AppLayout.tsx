@@ -1,4 +1,3 @@
-import AddCircleOutlineOutlinedIcon from '@mui/icons-material/AddCircleOutlineOutlined'
 import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined'
 import MenuIcon from '@mui/icons-material/Menu'
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined'
@@ -49,12 +48,6 @@ const navItems: Array<{
     label: 'Bets',
     path: '/bets',
     icon: <ReceiptLongOutlinedIcon />,
-  },
-  {
-    module: 'create-bet',
-    label: 'Create Bet',
-    path: '/bets/new',
-    icon: <AddCircleOutlineOutlinedIcon />,
   },
   {
     module: 'payout-queue',
