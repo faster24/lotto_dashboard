@@ -1,8 +1,6 @@
 import type { ApiEnvelope } from '../types/api.ts'
 
-const defaultBaseUrl = 'http://localhost:8000/api/v1'
-
-const baseUrl = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? defaultBaseUrl
+const baseUrl = import.meta.env.VITE_API_BASE_URL as string
 
 export class ApiError extends Error {
   status: number
