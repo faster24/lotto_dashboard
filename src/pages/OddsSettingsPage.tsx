@@ -1,7 +1,6 @@
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined'
 import RefreshOutlinedIcon from '@mui/icons-material/RefreshOutlined'
-import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined'
 import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined'
 import {
   Alert,
@@ -9,6 +8,7 @@ import {
   Button,
   Card,
   CardContent,
+  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -37,6 +37,12 @@ import type { BetType, OddSetting } from '../types/api.ts'
 
 const betTypeOptions: BetType[] = ['2D', '3D']
 
+const userTypeChip = (userType: 'user' | 'vip' | null) => {
+  if (userType === 'vip') return <Chip label="vip" color="warning" size="small" variant="outlined" />
+  if (userType === 'user') return <Chip label="user" color="primary" size="small" variant="outlined" />
+  return <Chip label="—" color="default" size="small" variant="outlined" />
+}
+
 const formatDateTime = (value: string | null) => {
   if (!value) return '-'
   const date = new Date(value)
@@ -54,7 +60,6 @@ const parseOdd = (value: string): number | null => {
 
 export function OddsSettingsPage() {
   const token = useAuthStore((state) => state.token)
-  const isAdmin = useAuthStore((state) => state.isAdmin)
 
   const [rows, setRows] = useState<OddSetting[]>([])
   const [loading, setLoading] = useState(false)
@@ -63,15 +68,12 @@ export function OddsSettingsPage() {
   const [searchInput, setSearchInput] = useState('')
   const [betTypeFilterInput, setBetTypeFilterInput] = useState<'ALL' | BetType>('ALL')
   const [activeFilterInput, setActiveFilterInput] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL')
+  const [userTypeFilterInput, setUserTypeFilterInput] = useState<'ALL' | 'user' | 'vip'>('ALL')
 
   const [searchFilter, setSearchFilter] = useState('')
   const [betTypeFilter, setBetTypeFilter] = useState<'ALL' | BetType>('ALL')
   const [activeFilter, setActiveFilter] = useState<'ALL' | 'ACTIVE' | 'INACTIVE'>('ALL')
-
-  const [createBetType, setCreateBetType] = useState<BetType>('2D')
-  const [createOdd, setCreateOdd] = useState('')
-  const [createIsActive, setCreateIsActive] = useState(true)
-  const [createSubmitting, setCreateSubmitting] = useState(false)
+  const [userTypeFilter, setUserTypeFilter] = useState<'ALL' | 'user' | 'vip'>('ALL')
 
   const [editDialog, setEditDialog] = useState<{ open: boolean; row: OddSetting | null }>({
     open: false,
@@ -122,74 +124,31 @@ export function OddsSettingsPage() {
       if (betTypeFilter !== 'ALL' && row.bet_type !== betTypeFilter) return false
       if (activeFilter === 'ACTIVE' && !row.is_active) return false
       if (activeFilter === 'INACTIVE' && row.is_active) return false
+      if (userTypeFilter !== 'ALL' && row.user_type !== userTypeFilter) return false
       if (!query) return true
       return (
-        String(row.id).includes(query) ||
         row.bet_type.toLowerCase().includes(query) ||
         row.odd.toLowerCase().includes(query)
       )
     })
-  }, [activeFilter, betTypeFilter, rows, searchFilter])
+  }, [activeFilter, betTypeFilter, rows, searchFilter, userTypeFilter])
 
   const applyFilters = () => {
     setSearchFilter(searchInput)
     setBetTypeFilter(betTypeFilterInput)
     setActiveFilter(activeFilterInput)
+    setUserTypeFilter(userTypeFilterInput)
   }
 
   const resetFilters = () => {
     setSearchInput('')
     setBetTypeFilterInput('ALL')
     setActiveFilterInput('ALL')
+    setUserTypeFilterInput('ALL')
     setSearchFilter('')
     setBetTypeFilter('ALL')
     setActiveFilter('ALL')
-  }
-
-  const submitCreate = async () => {
-    if (!token) return
-    const oddValue = parseOdd(createOdd)
-    if (oddValue === null) {
-      setFormError('Odd must be a number greater than or equal to 0.')
-      return
-    }
-
-    try {
-      setCreateSubmitting(true)
-      setFormError(null)
-
-      const existing = rows.find((row) => row.bet_type === createBetType)
-      if (existing) {
-        await oddSettingsApi.update(token, existing.id, {
-          betType: createBetType,
-          odd: oddValue,
-          isActive: createIsActive,
-        })
-        setSnackbar({
-          open: true,
-          message: `Existing ${createBetType} setting updated (one setting per bet type).`,
-        })
-      } else {
-        await oddSettingsApi.create(token, {
-          betType: createBetType,
-          odd: oddValue,
-          isActive: createIsActive,
-        })
-        setSnackbar({ open: true, message: 'Odd setting created.' })
-      }
-
-      setCreateOdd('')
-      setCreateIsActive(true)
-      await loadOddSettings()
-    } catch (requestError) {
-      if (requestError instanceof ApiError) {
-        setFormError(requestError.message)
-      } else {
-        setFormError('Unable to save odd setting.')
-      }
-    } finally {
-      setCreateSubmitting(false)
-    }
+    setUserTypeFilter('ALL')
   }
 
   const openEditDialog = (row: OddSetting) => {
@@ -284,71 +243,8 @@ export function OddsSettingsPage() {
         </Stack>
       </Paper>
 
-      {!isAdmin && (
-        <Alert severity="info">
-          Admin claim is not detected in token claims. Actions are still enabled and API
-          permissions will be enforced server-side.
-        </Alert>
-      )}
       {formError && <Alert severity="error">{formError}</Alert>}
       {error && <Alert severity="error">{error}</Alert>}
-
-      <Card variant="outlined">
-        <CardContent>
-          <Stack spacing={2}>
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>
-              Create Or Update Setting
-            </Typography>
-            <Box
-              sx={{
-                display: 'grid',
-                gridTemplateColumns: { xs: '1fr', md: '180px 1fr auto auto' },
-                gap: 1.5,
-                alignItems: { xs: 'stretch', md: 'center' },
-              }}
-            >
-              <Select
-                size="small"
-                value={createBetType}
-                onChange={(event) => setCreateBetType(event.target.value as BetType)}
-                inputProps={{ 'aria-label': 'Create bet type' }}
-              >
-                {betTypeOptions.map((betType) => (
-                  <MenuItem key={betType} value={betType}>
-                    {betType}
-                  </MenuItem>
-                ))}
-              </Select>
-              <TextField
-                size="small"
-                label="Odd"
-                value={createOdd}
-                onChange={(event) => setCreateOdd(event.target.value)}
-                inputProps={{ inputMode: 'decimal' }}
-                helperText="Numeric value (>= 0)"
-              />
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={createIsActive}
-                    onChange={(event) => setCreateIsActive(event.target.checked)}
-                  />
-                }
-                label="Active"
-              />
-              <Button
-                variant="contained"
-                startIcon={<SaveOutlinedIcon />}
-                onClick={() => void submitCreate()}
-                disabled={createSubmitting}
-                sx={{ minWidth: { md: 120 }, height: 40 }}
-              >
-                {createSubmitting ? 'Saving…' : 'Save'}
-              </Button>
-            </Box>
-          </Stack>
-        </CardContent>
-      </Card>
 
       <Card variant="outlined">
         <CardContent>
@@ -356,7 +252,7 @@ export function OddsSettingsPage() {
             <Stack direction={{ xs: 'column', lg: 'row' }} spacing={1.5}>
               <TextField
                 size="small"
-                label="Search ID/Bet Type/Odd"
+                label="Search Bet Type/Odd"
                 value={searchInput}
                 onChange={(event) => setSearchInput(event.target.value)}
               />
@@ -385,6 +281,18 @@ export function OddsSettingsPage() {
                 <MenuItem value="ACTIVE">Active</MenuItem>
                 <MenuItem value="INACTIVE">Inactive</MenuItem>
               </Select>
+              <Select
+                size="small"
+                value={userTypeFilterInput}
+                onChange={(event) =>
+                  setUserTypeFilterInput(event.target.value as 'ALL' | 'user' | 'vip')
+                }
+                sx={{ minWidth: 150 }}
+              >
+                <MenuItem value="ALL">All User Types</MenuItem>
+                <MenuItem value="user">user</MenuItem>
+                <MenuItem value="vip">vip</MenuItem>
+              </Select>
             </Stack>
 
             <Stack direction="row" spacing={1}>
@@ -400,16 +308,18 @@ export function OddsSettingsPage() {
               <Table size="small">
                 <TableHead>
                   <TableRow>
-                    <TableCell>ID</TableCell>
+                    <TableCell>#</TableCell>
                     <TableCell>Bet Type</TableCell>
                     <TableCell>Odd</TableCell>
+                    <TableCell>User Type</TableCell>
+                    <TableCell>Currency</TableCell>
                     <TableCell>Status</TableCell>
                     <TableCell>Updated At</TableCell>
                     <TableCell align="right">Actions</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {visibleRows.map((row) => (
+                  {visibleRows.map((row, index) => (
                     <TableRow
                       key={row.id}
                       hover
@@ -420,12 +330,16 @@ export function OddsSettingsPage() {
                         transition: 'background-color 180ms ease',
                       }}
                     >
-                      <TableCell>{row.id}</TableCell>
+                      <TableCell>{index + 1}</TableCell>
                       <TableCell sx={{ fontFamily: '"Roboto Mono", monospace', fontWeight: 700 }}>
                         {row.bet_type}
                       </TableCell>
                       <TableCell sx={{ fontFamily: '"Roboto Mono", monospace' }}>
                         {row.odd}
+                      </TableCell>
+                      <TableCell>{userTypeChip(row.user_type)}</TableCell>
+                      <TableCell sx={{ fontFamily: '"Roboto Mono", monospace' }}>
+                        {row.currency ?? '—'}
                       </TableCell>
                       <TableCell>{row.is_active ? 'Active' : 'Inactive'}</TableCell>
                       <TableCell>{formatDateTime(row.updated_at)}</TableCell>
@@ -454,7 +368,7 @@ export function OddsSettingsPage() {
                   ))}
                   {!loading && visibleRows.length === 0 && (
                     <TableRow>
-                      <TableCell align="center" colSpan={6}>
+                      <TableCell align="center" colSpan={8}>
                         No odd settings found.
                       </TableCell>
                     </TableRow>

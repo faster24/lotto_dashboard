@@ -9,6 +9,8 @@ export type NavModule =
   | 'results-3d'
   | 'odds-settings'
   | 'users'
+  | 'settings-bank'
+  | 'settings-account'
 export type UserRole = 'Admin' | 'Editor' | 'Analyst'
 export type UserStatus = 'Active' | 'Invited' | 'Suspended'
 

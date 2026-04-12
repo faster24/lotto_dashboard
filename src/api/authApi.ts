@@ -1,5 +1,5 @@
 import { apiRequest } from '../lib/apiClient.ts'
-import type { AuthData, LoginRequest, User } from '../types/api.ts'
+import type { AdminAccountUpdatePayload, AuthData, LoginRequest, User } from '../types/api.ts'
 
 export const authApi = {
   login: (payload: LoginRequest) =>
@@ -13,6 +13,14 @@ export const authApi = {
     apiRequest<{ user: User }>('/me', {
       method: 'GET',
       token,
+    }),
+
+  updateAccount: (token: string, payload: AdminAccountUpdatePayload) =>
+    apiRequest<{ user: User }>('/me', {
+      method: 'PUT',
+      token,
+      body: JSON.stringify(payload),
+      headers: { 'Content-Type': 'application/json' },
     }),
 
   logout: (token: string) =>

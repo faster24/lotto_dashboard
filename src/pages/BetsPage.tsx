@@ -40,7 +40,7 @@ import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import { betsApi } from '../api/betsApi.ts'
 import { ApiError } from '../lib/apiClient.ts'
 import { useAuthStore } from '../stores/authStore.ts'
-import type { Bet, BetAdminStatus, BetType } from '../types/api.ts'
+import type { Bet, BetAdminStatus, BetStatus, BetType } from '../types/api.ts'
 import {
   getAdminTransitionLabel,
   isAdminTransitionAllowed,
@@ -66,6 +66,7 @@ export function BetsPage() {
   const [searchText, setSearchText] = useState('')
   const deferredSearchText = useDeferredValue(searchText)
   const [betTypeFilter, setBetTypeFilter] = useState<'ALL' | BetType>('ALL')
+  const [statusFilter, setStatusFilter] = useState<'ALL' | BetStatus>('ALL')
   const [statusDialog, setStatusDialog] = useState<{
     open: boolean
     bet: Bet | null
@@ -117,8 +118,9 @@ export function BetsPage() {
   }, [refundPreviewUrl])
 
   const visibleBets = useMemo(() => {
-  return bets.filter((bet) => {
+    return bets.filter((bet) => {
       if (betTypeFilter !== 'ALL' && bet.bet_type !== betTypeFilter) return false
+      if (statusFilter !== 'ALL' && bet.status !== statusFilter) return false
       if (!deferredSearchText.trim()) return true
       const query = deferredSearchText.trim().toLowerCase()
       return (
@@ -127,7 +129,7 @@ export function BetsPage() {
         bet.bet_result_status.toLowerCase().includes(query)
       )
     })
-  }, [betTypeFilter, bets, deferredSearchText])
+  }, [betTypeFilter, bets, deferredSearchText, statusFilter])
 
   const isPayoutEligible = (bet: Bet) =>
     bet.bet_result_status === 'WON' && bet.payout_status === 'PENDING'
@@ -360,6 +362,18 @@ export function BetsPage() {
             <MenuItem value="ALL">All Bet Types</MenuItem>
             <MenuItem value="2D">2D</MenuItem>
             <MenuItem value="3D">3D</MenuItem>
+          </Select>
+          <Select
+            size="small"
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value as 'ALL' | BetStatus)}
+            sx={{ minWidth: 160 }}
+          >
+            <MenuItem value="ALL">All Statuses</MenuItem>
+            <MenuItem value="PENDING">Pending</MenuItem>
+            <MenuItem value="ACCEPTED">Accepted</MenuItem>
+            <MenuItem value="REJECTED">Rejected</MenuItem>
+            <MenuItem value="REFUNDED">Refunded</MenuItem>
           </Select>
           <Select
             size="small"

@@ -188,6 +188,8 @@ export interface OddSetting {
   bet_type: BetType
   odd: string
   is_active: boolean
+  user_type: 'user' | 'vip' | null
+  currency: string | null
   created_at: string
   updated_at: string
 }
@@ -204,6 +206,44 @@ export interface OddSettingWritePayload {
   betType: BetType
   odd: number
   isActive?: boolean
+}
+
+export type BankCurrency = 'THB' | 'MMK'
+
+export interface AdminBankSetting {
+  id: number
+  bank_name: string
+  account_holder_name: string
+  account_number: string
+  is_active: boolean
+  is_primary: boolean
+  currency: BankCurrency
+  created_at: string
+  updated_at: string
+}
+
+export interface AdminBankSettingListData {
+  admin_bank_settings: AdminBankSetting[]
+}
+
+export interface AdminBankSettingItemData {
+  admin_bank_setting: AdminBankSetting | null
+}
+
+export interface AdminBankSettingWritePayload {
+  bank_name: string
+  account_holder_name: string
+  account_number: string
+  is_active?: boolean
+  is_primary?: boolean
+  currency: BankCurrency
+}
+
+export interface AdminAccountUpdatePayload {
+  email?: string
+  current_password?: string
+  password?: string
+  password_confirmation?: string
 }
 
 export interface AnalyticsFilters {

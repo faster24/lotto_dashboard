@@ -1,3 +1,7 @@
+import AccountCircleOutlinedIcon from '@mui/icons-material/AccountCircleOutlined'
+import AccountBalanceOutlinedIcon from '@mui/icons-material/AccountBalanceOutlined'
+import ExpandLessIcon from '@mui/icons-material/ExpandLess'
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore'
 import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined'
 import MenuIcon from '@mui/icons-material/Menu'
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined'
@@ -7,10 +11,12 @@ import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined'
 import PaidOutlinedIcon from '@mui/icons-material/PaidOutlined'
 import QueryStatsOutlinedIcon from '@mui/icons-material/QueryStatsOutlined'
 import PeopleOutlineOutlinedIcon from '@mui/icons-material/PeopleOutlineOutlined'
+import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined'
 import TuneOutlinedIcon from '@mui/icons-material/TuneOutlined'
 import {
     AppBar,
     Box,
+    Collapse,
     Drawer,
     IconButton,
     List,
@@ -24,7 +30,7 @@ import {
 } from '@mui/material'
 import { useTheme } from '@mui/material/styles'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
-import type { ReactNode } from 'react'
+import { type ReactNode, useState } from 'react'
 import { useAuthStore } from '../../stores/authStore.ts'
 import { useUiStore } from '../../stores/uiStore.ts'
 import type { NavModule } from '../../types/dashboard.ts'
@@ -81,9 +87,13 @@ const navItems: Array<{
         },
     ]
 
-const getHeaderTitle = (pathname: string) =>
-    navItems.find((item) => pathname.startsWith(item.path))?.label ??
-    'Bet Operations'
+const getHeaderTitle = (pathname: string) => {
+    const navMatch = navItems.find((item) => pathname.startsWith(item.path))?.label
+    if (navMatch) return navMatch
+    if (pathname.startsWith('/settings/bank-info')) return 'Bank Information'
+    if (pathname.startsWith('/settings/account')) return 'My Account'
+    return 'Bet Operations'
+}
 
 export function AppLayout() {
     const navigate = useNavigate()
@@ -96,6 +106,10 @@ export function AppLayout() {
     const toggleSidebar = useUiStore((state) => state.toggleSidebar)
     const closeSidebar = useUiStore((state) => state.closeSidebar)
     const signOut = useAuthStore((state) => state.signOut)
+    const [settingsOpen, setSettingsOpen] = useState(
+        location.pathname.startsWith('/settings/bank-info') ||
+        location.pathname.startsWith('/settings/account'),
+    )
 
     const handleSignOut = () => {
         void signOut().finally(() => {
@@ -111,7 +125,7 @@ export function AppLayout() {
                     Bet Operations
                 </Typography>
             </Box>
-            <List sx={{ px: 1.25, py: 1.5 }}>
+            <List sx={{ px: 1.25, py: 1.5, flexGrow: 1 }}>
                 {navItems.map((item) => {
                     const isActive = location.pathname.startsWith(item.path)
                     return (
@@ -134,6 +148,48 @@ export function AppLayout() {
                         </ListItemButton>
                     )
                 })}
+
+                {/* Settings group */}
+                <ListItemButton
+                    onClick={() => setSettingsOpen((prev) => !prev)}
+                    sx={{ mb: 0.5, borderRadius: 1.5 }}
+                >
+                    <ListItemIcon><SettingsOutlinedIcon /></ListItemIcon>
+                    <ListItemText primary="Settings" />
+                    {settingsOpen ? <ExpandLessIcon fontSize="small" /> : <ExpandMoreIcon fontSize="small" />}
+                </ListItemButton>
+                <Collapse in={settingsOpen} timeout="auto" unmountOnExit>
+                    <List disablePadding sx={{ pl: 1.5 }}>
+                        <ListItemButton
+                            component={NavLink}
+                            to="/settings/bank-info"
+                            selected={location.pathname.startsWith('/settings/bank-info')}
+                            onClick={isMobile ? closeSidebar : undefined}
+                            sx={{
+                                mb: 0.5,
+                                borderRadius: 1.5,
+                                '&.Mui-selected': { bgcolor: 'action.selected' },
+                            }}
+                        >
+                            <ListItemIcon sx={{ minWidth: 36 }}><AccountBalanceOutlinedIcon fontSize="small" /></ListItemIcon>
+                            <ListItemText primary="Bank Information" primaryTypographyProps={{ variant: 'body2' }} />
+                        </ListItemButton>
+                        <ListItemButton
+                            component={NavLink}
+                            to="/settings/account"
+                            selected={location.pathname.startsWith('/settings/account')}
+                            onClick={isMobile ? closeSidebar : undefined}
+                            sx={{
+                                mb: 0.5,
+                                borderRadius: 1.5,
+                                '&.Mui-selected': { bgcolor: 'action.selected' },
+                            }}
+                        >
+                            <ListItemIcon sx={{ minWidth: 36 }}><AccountCircleOutlinedIcon fontSize="small" /></ListItemIcon>
+                            <ListItemText primary="My Account" primaryTypographyProps={{ variant: 'body2' }} />
+                        </ListItemButton>
+                    </List>
+                </Collapse>
             </List>
         </Box>
     )

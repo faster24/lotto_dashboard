@@ -191,7 +191,7 @@ export function BetDetailPage() {
   }, [refundPreviewUrl])
 
   const betNumbersText = useMemo(
-    () => bet?.bet_numbers.map((entry) => entry.number).join(', ') ?? '-',
+    () => bet?.bet_numbers.map((entry) => String(entry.number).padStart(2, '0')).join(', ') ?? '-',
     [bet],
   )
 

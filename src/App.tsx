@@ -1,9 +1,11 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { ProtectedRoute } from './components/auth/ProtectedRoute.tsx'
 import { AppLayout } from './components/layout/AppLayout.tsx'
+import { AdminBankSettingsPage } from './pages/AdminBankSettingsPage.tsx'
 import { BetDetailPage } from './pages/BetDetailPage.tsx'
 import { BetsPage } from './pages/BetsPage.tsx'
 import { LoginPage } from './pages/LoginPage.tsx'
+import { ManageAccountPage } from './pages/ManageAccountPage.tsx'
 import { NotFoundPage } from './pages/NotFoundPage.tsx'
 import { OddsSettingsPage } from './pages/OddsSettingsPage.tsx'
 import { PayoutQueuePage } from './pages/PayoutQueuePage.tsx'
@@ -26,6 +28,8 @@ function App() {
           <Route path="/results/2d" element={<TwoDResultsPage />} />
           <Route path="/results/3d" element={<ThreeDResultsPage />} />
           <Route path="/settings/odds" element={<OddsSettingsPage />} />
+          <Route path="/settings/bank-info" element={<AdminBankSettingsPage />} />
+          <Route path="/settings/account" element={<ManageAccountPage />} />
           <Route path="/users" element={<UsersPage />} />
         </Route>
       </Route>

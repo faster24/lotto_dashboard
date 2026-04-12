@@ -1,12 +1,16 @@
 import type { Bet, BetAdminStatus } from '../types/api.ts'
 
+const isRefunded = (bet: Bet) =>
+  bet.status === 'REFUNDED' || bet.payout_status === 'REFUNDED'
+
 export function isAdminTransitionAllowed(bet: Bet, status: BetAdminStatus): boolean {
+  if (isRefunded(bet)) return false
   switch (status) {
     case 'ACCEPTED':
     case 'REJECTED':
       return bet.status === 'PENDING'
     case 'REFUNDED':
-      return bet.status !== 'REFUNDED' && bet.payout_status !== 'PAID_OUT'
+      return bet.payout_status !== 'PAID_OUT'
   }
 }
 
