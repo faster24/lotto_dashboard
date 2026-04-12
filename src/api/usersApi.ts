@@ -39,4 +39,12 @@ export const usersApi = {
       method: 'DELETE',
       token,
     }),
+
+  assignRole: (token: string, userId: number, role: 'user' | 'vip') =>
+    apiRequest<AdminUserDetailData>(`/admin/users/${userId}/role`, {
+      method: 'PATCH',
+      token,
+      body: JSON.stringify({ role }),
+      headers: { 'Content-Type': 'application/json' },
+    }),
 }

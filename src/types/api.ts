@@ -9,10 +9,16 @@ export interface User {
   name: string
   username: string | null
   email: string
+  role: 'user' | 'vip' | null
+  roles: string[]
   is_banned: boolean
   banned_at: string | null
   created_at: string
   updated_at: string
+}
+
+export interface AdminAssignUserRolePayload {
+  role: 'user' | 'vip'
 }
 
 export type WalletBankName = 'KBZ' | 'AYA' | 'CB' | 'UAB' | 'YOMA' | 'OTHER'

@@ -1,5 +1,6 @@
 import CloseOutlinedIcon from '@mui/icons-material/CloseOutlined'
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined'
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined'
 import PersonOffOutlinedIcon from '@mui/icons-material/PersonOffOutlined'
 import RefreshOutlinedIcon from '@mui/icons-material/RefreshOutlined'
 import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined'
@@ -19,7 +20,9 @@ import {
   Drawer,
   IconButton,
   InputAdornment,
+  MenuItem,
   Paper,
+  Select,
   Snackbar,
   Stack,
   Table,
@@ -30,6 +33,7 @@ import {
   TablePagination,
   TableRow,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -45,6 +49,15 @@ type ActionType = 'ban' | 'unban' | 'delete'
 const toStatusLabel = (user: User) => (user.is_banned ? 'Banned' : 'Active')
 
 const statusColor = (user: User) => (user.is_banned ? 'error' : 'success')
+
+const isAdminUser = (user: User) => user.roles.includes('admin')
+
+const roleChipProps = (user: User): { label: string; color: 'default' | 'warning' | 'error' | 'primary' } => {
+  if (isAdminUser(user)) return { label: 'admin', color: 'error' }
+  if (user.role === 'vip') return { label: 'vip', color: 'warning' }
+  if (user.role === 'user') return { label: 'user', color: 'primary' }
+  return { label: '—', color: 'default' }
+}
 
 const formatDateTime = (value: string | null) => {
   if (!value) return 'N/A'
@@ -67,6 +80,8 @@ export function UsersPage() {
   const [detailLoading, setDetailLoading] = useState(false)
   const [detailError, setDetailError] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState<ActionType | null>(null)
+  const [pendingRole, setPendingRole] = useState<'user' | 'vip' | null>(null)
+  const [roleLoading, setRoleLoading] = useState(false)
   const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; action: ActionType | null }>({
     open: false,
     action: null,
@@ -101,7 +116,9 @@ export function UsersPage() {
         setDetailLoading(true)
         setDetailError(null)
         const response = await usersApi.getAdminDetail(token, userId)
-        setSelectedUserDetail(response.data?.user ?? null)
+        const user = response.data?.user ?? null
+        setSelectedUserDetail(user)
+        setPendingRole(user?.role ?? null)
       } catch (requestError) {
         if (requestError instanceof ApiError) {
           setDetailError(requestError.message)
@@ -160,6 +177,26 @@ export function UsersPage() {
 
   const removeUserFromList = (userId: number) => {
     setUsers((previousUsers) => previousUsers.filter((user) => user.id !== userId))
+  }
+
+  const handleAssignRole = async () => {
+    if (!token || selectedUserId === null || !pendingRole) return
+    try {
+      setRoleLoading(true)
+      setDetailError(null)
+      const response = await usersApi.assignRole(token, selectedUserId, pendingRole)
+      const updated = response.data?.user ?? null
+      setSelectedUserDetail(updated)
+      setPendingRole(updated?.role ?? null)
+      setUsers((prev) =>
+        prev.map((u) => (u.id === selectedUserId ? { ...u, role: updated?.role ?? u.role } : u)),
+      )
+      setSnackbar({ open: true, message: 'Role updated successfully.' })
+    } catch (requestError) {
+      setDetailError(requestError instanceof ApiError ? requestError.message : 'Failed to update role.')
+    } finally {
+      setRoleLoading(false)
+    }
   }
 
   const performAction = async () => {
@@ -254,6 +291,7 @@ export function UsersPage() {
             <TableRow>
               <TableCell>Email</TableCell>
               <TableCell>Username</TableCell>
+              <TableCell>Role</TableCell>
               <TableCell>Status</TableCell>
               <TableCell>Created</TableCell>
               <TableCell align="right">Actions</TableCell>
@@ -262,7 +300,7 @@ export function UsersPage() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={5} align="center">
+                <TableCell colSpan={6} align="center">
                   <Stack direction="row" spacing={1} alignItems="center" justifyContent="center">
                     <CircularProgress size={18} />
                     <Typography variant="body2">Loading users...</Typography>
@@ -284,6 +322,9 @@ export function UsersPage() {
               >
                   <TableCell>{user.email}</TableCell>
                   <TableCell>{user.username ?? 'N/A'}</TableCell>
+                  <TableCell>
+                    {(() => { const p = roleChipProps(user); return <Chip size="small" label={p.label} color={p.color} variant="outlined" /> })()}
+                  </TableCell>
                   <TableCell>
                     <Chip
                       size="small"
@@ -311,7 +352,7 @@ export function UsersPage() {
             )}
             {!loading && filteredUsers.length === 0 && (
               <TableRow>
-                <TableCell colSpan={5} align="center">
+                <TableCell colSpan={6} align="center">
                   No users found.
                 </TableCell>
               </TableRow>
@@ -381,6 +422,52 @@ export function UsersPage() {
 
             <Divider />
 
+            <Stack spacing={0.75}>
+              <Typography variant="caption" color="text.secondary">
+                Role
+              </Typography>
+              {isAdminUser(selectedUserDetail) ? (
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Chip label="admin" color="error" size="small" variant="outlined" />
+                  <Stack direction="row" spacing={0.5} alignItems="center" color="text.disabled">
+                    <LockOutlinedIcon sx={{ fontSize: 14 }} />
+                    <Typography variant="caption">Admin accounts cannot be reassigned</Typography>
+                  </Stack>
+                </Stack>
+              ) : (
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Tooltip title={!pendingRole ? 'No role set on this account yet' : ''} placement="top">
+                    <Select
+                      size="small"
+                      value={pendingRole ?? ''}
+                      onChange={(event) => setPendingRole(event.target.value as 'user' | 'vip')}
+                      disabled={roleLoading}
+                      sx={{ minWidth: 100 }}
+                    >
+                      <MenuItem value="user">user</MenuItem>
+                      <MenuItem value="vip">vip</MenuItem>
+                    </Select>
+                  </Tooltip>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    disableElevation
+                    disabled={roleLoading || !pendingRole || pendingRole === selectedUserDetail.role}
+                    onClick={() => void handleAssignRole()}
+                  >
+                    {roleLoading ? <CircularProgress size={14} color="inherit" /> : 'Save'}
+                  </Button>
+                  {selectedUserDetail.role && pendingRole !== selectedUserDetail.role && (
+                    <Typography variant="caption" color="text.secondary">
+                      was: <strong>{selectedUserDetail.role}</strong>
+                    </Typography>
+                  )}
+                </Stack>
+              )}
+            </Stack>
+
+            <Divider />
+
             <Stack spacing={0.5}>
               <Typography variant="caption" color="text.secondary">
                 Bank info
@@ -398,37 +485,43 @@ export function UsersPage() {
 
             <Divider />
 
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-              {selectedUserDetail.is_banned ? (
+            {isAdminUser(selectedUserDetail) ? (
+              <Alert severity="info" icon={<LockOutlinedIcon fontSize="small" />}>
+                Admin accounts cannot be banned or deleted from this dashboard.
+              </Alert>
+            ) : (
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+                {selectedUserDetail.is_banned ? (
+                  <Button
+                    variant="outlined"
+                    startIcon={<UndoOutlinedIcon />}
+                    onClick={() => openConfirm('unban')}
+                    disabled={actionLoading !== null}
+                  >
+                    Unban user
+                  </Button>
+                ) : (
+                  <Button
+                    color="warning"
+                    variant="outlined"
+                    startIcon={<PersonOffOutlinedIcon />}
+                    onClick={() => openConfirm('ban')}
+                    disabled={actionLoading !== null}
+                  >
+                    Ban user
+                  </Button>
+                )}
                 <Button
+                  color="error"
                   variant="outlined"
-                  startIcon={<UndoOutlinedIcon />}
-                  onClick={() => openConfirm('unban')}
+                  startIcon={<DeleteOutlineOutlinedIcon />}
+                  onClick={() => openConfirm('delete')}
                   disabled={actionLoading !== null}
                 >
-                  Unban user
+                  Delete user
                 </Button>
-              ) : (
-                <Button
-                  color="warning"
-                  variant="outlined"
-                  startIcon={<PersonOffOutlinedIcon />}
-                  onClick={() => openConfirm('ban')}
-                  disabled={actionLoading !== null}
-                >
-                  Ban user
-                </Button>
-              )}
-              <Button
-                color="error"
-                variant="outlined"
-                startIcon={<DeleteOutlineOutlinedIcon />}
-                onClick={() => openConfirm('delete')}
-                disabled={actionLoading !== null}
-              >
-                Delete user
-              </Button>
-            </Stack>
+              </Stack>
+            )}
           </Stack>
         ) : null}
       </Drawer>
