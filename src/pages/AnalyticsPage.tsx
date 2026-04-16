@@ -30,6 +30,7 @@ import {
   LineChart,
   Pie,
   PieChart,
+  PieLabelRenderProps,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -266,8 +267,8 @@ export function AnalyticsPage() {
                           dataKey="value"
                           nameKey="name"
                           outerRadius={110}
-                          label={(props: { name: string; percentage: number }) =>
-                            `${props.name} ${Number(props.percentage).toFixed(1)}%`
+                          label={(props: PieLabelRenderProps) =>
+                            `${props.name} ${Number(props.percent! * 100).toFixed(1)}%`
                           }
                         >
                           {resultDistributionData.map((entry, index) => (
