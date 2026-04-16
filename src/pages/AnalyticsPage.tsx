@@ -30,7 +30,7 @@ import {
   LineChart,
   Pie,
   PieChart,
-  PieLabelRenderProps,
+  type PieLabelRenderProps,
   ResponsiveContainer,
   Tooltip,
   XAxis,
