@@ -98,10 +98,10 @@ export function AnalyticsPage() {
         analyticsApi.getStatusDistribution(token, filters),
         analyticsApi.getTopNumbers(token, { ...filters, limit: 10 }),
       ])
-      setKpisData(kpis)
-      setTrendsData(trends)
-      setStatusData(status)
-      setTopNumbersData(topNumbers)
+      setKpisData(kpis.data)
+      setTrendsData(trends.data)
+      setStatusData(status.data)
+      setTopNumbersData(topNumbers.data)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load analytics data')
     } finally {
@@ -119,7 +119,7 @@ export function AnalyticsPage() {
     return [
       { label: 'Total Bets', value: kpis.total_bets.toLocaleString() },
       { label: 'Unique Bettors', value: kpis.unique_bettors.toLocaleString() },
-      { label: 'Total Turnover', value: `${formatMMK(kpis.total_turnover)} MMK` },
+      { label: 'Total Turnover', value: `${formatMMK(parseFloat(kpis.total_turnover))} MMK` },
       { label: 'Paid Out', value: kpis.paid_out_count.toLocaleString() },
     ]
   }, [kpisData])
@@ -266,8 +266,8 @@ export function AnalyticsPage() {
                           dataKey="value"
                           nameKey="name"
                           outerRadius={110}
-                          label={({ name, percentage }) =>
-                            `${name} ${Number(percentage).toFixed(1)}%`
+                          label={(props: { name: string; percentage: number }) =>
+                            `${props.name} ${Number(props.percentage).toFixed(1)}%`
                           }
                         >
                           {resultDistributionData.map((entry, index) => (
