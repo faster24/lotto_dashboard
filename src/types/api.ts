@@ -69,7 +69,7 @@ export interface BetFileMeta {
 export type BetType = '2D' | '3D'
 export type TargetOpenTime = '11:00:00' | '12:01:00' | '15:00:00' | '16:30:00'
 export type BetStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'REFUNDED'
-export type BetResultStatus = 'OPEN' | 'WON' | 'LOST' | 'VOID'
+export type BetResultStatus = 'OPEN' | 'WON' | 'LOST' | 'INVALID'
 export type PayoutStatus = 'PENDING' | 'PAID_OUT' | 'REFUNDED'
 export type BetAdminStatus = 'ACCEPTED' | 'REJECTED' | 'REFUNDED'
 

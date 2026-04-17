@@ -132,7 +132,9 @@ export function BetsPage() {
   }, [betTypeFilter, bets, deferredSearchText, statusFilter])
 
   const isPayoutEligible = (bet: Bet) =>
-    bet.bet_result_status === 'WON' && bet.payout_status === 'PENDING'
+    bet.status === 'ACCEPTED' &&
+    bet.bet_result_status === 'WON' &&
+    bet.payout_status === 'PENDING'
 
   const quickStats = useMemo(() => {
     const pendingReviewCount = bets.filter((bet) => bet.status === 'PENDING').length
