@@ -24,8 +24,8 @@ export const analyticsApi = {
   getKpis: (token: string, filters: AnalyticsFilters) =>
     apiRequest<AnalyticsKpisData>(
       `/admin/analytics/kpis${toSearchParams({
-        date_from: filters.dateFrom,
-        date_to: filters.dateTo,
+        from: filters.dateFrom,
+        to: filters.dateTo,
         target_opentime: filters.targetOpenTime,
       })}`,
       { method: 'GET', token },
@@ -34,8 +34,8 @@ export const analyticsApi = {
   getDailyTrends: (token: string, filters: AnalyticsFilters) =>
     apiRequest<AnalyticsDailyTrendsData>(
       `/admin/analytics/trends/daily${toSearchParams({
-        date_from: filters.dateFrom,
-        date_to: filters.dateTo,
+        from: filters.dateFrom,
+        to: filters.dateTo,
         target_opentime: filters.targetOpenTime,
         bet_type: filters.betType,
       })}`,
@@ -45,8 +45,8 @@ export const analyticsApi = {
   getStatusDistribution: (token: string, filters: AnalyticsFilters) =>
     apiRequest<AnalyticsStatusDistributionData>(
       `/admin/analytics/status-distribution${toSearchParams({
-        date_from: filters.dateFrom,
-        date_to: filters.dateTo,
+        from: filters.dateFrom,
+        to: filters.dateTo,
         target_opentime: filters.targetOpenTime,
       })}`,
       { method: 'GET', token },
@@ -55,8 +55,8 @@ export const analyticsApi = {
   getPayouts: (token: string, filters: AnalyticsFilters) =>
     apiRequest<AnalyticsPayoutsData>(
       `/admin/analytics/payouts${toSearchParams({
-        date_from: filters.dateFrom,
-        date_to: filters.dateTo,
+        from: filters.dateFrom,
+        to: filters.dateTo,
         admin_user_id:
           filters.adminUserId !== undefined ? String(filters.adminUserId) : undefined,
       })}`,
@@ -66,8 +66,8 @@ export const analyticsApi = {
   getTopNumbers: (token: string, filters: AnalyticsFilters) =>
     apiRequest<AnalyticsTopNumbersData>(
       `/admin/analytics/top-numbers${toSearchParams({
-        date_from: filters.dateFrom,
-        date_to: filters.dateTo,
+        from: filters.dateFrom,
+        to: filters.dateTo,
         bet_type: filters.betType,
         limit: filters.limit !== undefined ? String(filters.limit) : undefined,
       })}`,
@@ -77,8 +77,8 @@ export const analyticsApi = {
   getSettlementRuns: (token: string, filters: AnalyticsFilters) =>
     apiRequest<AnalyticsSettlementRunsData>(
       `/admin/analytics/settlement-runs${toSearchParams({
-        date_from: filters.dateFrom,
-        date_to: filters.dateTo,
+        from: filters.dateFrom,
+        to: filters.dateTo,
       })}`,
       { method: 'GET', token },
     ),

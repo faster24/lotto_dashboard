@@ -35,14 +35,6 @@ import {
 } from 'recharts'
 import { analyticsApi } from '../api/analyticsApi.ts'
 import { ApiError } from '../lib/apiClient.ts'
-import {
-  demoDailyTrendsData,
-  demoKpisData,
-  demoPayoutsData,
-  demoSettlementRunsData,
-  demoStatusDistributionData,
-  demoTopNumbersData,
-} from '../data/demoStatsData.ts'
 import { useAuthStore } from '../stores/authStore.ts'
 import type {
   AnalyticsDailyTrendsData,
@@ -82,14 +74,6 @@ const parseIntOrUndefined = (value: string) => {
   return Number.isFinite(parsed) ? parsed : undefined
 }
 
-const fallbackToDemoData = {
-  kpis: demoKpisData,
-  daily: demoDailyTrendsData,
-  status: demoStatusDistributionData,
-  payouts: demoPayoutsData,
-  topNumbers: demoTopNumbersData,
-  settlementRuns: demoSettlementRunsData,
-}
 
 export function StatsPage() {
   const token = useAuthStore((state) => state.token)
@@ -115,44 +99,34 @@ export function StatsPage() {
 
   const [kpiState, setKpiState] = useState<SectionState<AnalyticsKpisData>>({
     loading: false,
-    data: fallbackToDemoData.kpis,
+    data: null,
     error: null,
   })
-  const [dailyState, setDailyState] = useState<SectionState<AnalyticsDailyTrendsData>>(
-    {
-      loading: false,
-      data: fallbackToDemoData.daily,
-      error: null,
-    },
-  )
-  const [statusState, setStatusState] = useState<SectionState<AnalyticsStatusDistributionData>>(
-    {
-      loading: false,
-      data: fallbackToDemoData.status,
-      error: null,
-    },
-  )
-  const [payoutState, setPayoutState] = useState<SectionState<AnalyticsPayoutsData>>(
-    {
-      loading: false,
-      data: fallbackToDemoData.payouts,
-      error: null,
-    },
-  )
-  const [topState, setTopState] = useState<SectionState<AnalyticsTopNumbersData>>(
-    {
-      loading: false,
-      data: fallbackToDemoData.topNumbers,
-      error: null,
-    },
-  )
-  const [settlementState, setSettlementState] = useState<SectionState<AnalyticsSettlementRunsData>>(
-    {
-      loading: false,
-      data: fallbackToDemoData.settlementRuns,
-      error: null,
-    },
-  )
+  const [dailyState, setDailyState] = useState<SectionState<AnalyticsDailyTrendsData>>({
+    loading: false,
+    data: null,
+    error: null,
+  })
+  const [statusState, setStatusState] = useState<SectionState<AnalyticsStatusDistributionData>>({
+    loading: false,
+    data: null,
+    error: null,
+  })
+  const [payoutState, setPayoutState] = useState<SectionState<AnalyticsPayoutsData>>({
+    loading: false,
+    data: null,
+    error: null,
+  })
+  const [topState, setTopState] = useState<SectionState<AnalyticsTopNumbersData>>({
+    loading: false,
+    data: null,
+    error: null,
+  })
+  const [settlementState, setSettlementState] = useState<SectionState<AnalyticsSettlementRunsData>>({
+    loading: false,
+    data: null,
+    error: null,
+  })
 
   const analyticsFilters = useMemo<AnalyticsFilters>(
     () => ({
@@ -169,16 +143,12 @@ export function StatsPage() {
   const runAnalytics = useCallback(async () => {
     if (!token) {
       setIsDemoMode(true)
-      setKpiState({ loading: false, data: fallbackToDemoData.kpis, error: null })
-      setDailyState({ loading: false, data: fallbackToDemoData.daily, error: null })
-      setStatusState({ loading: false, data: fallbackToDemoData.status, error: null })
-      setPayoutState({ loading: false, data: fallbackToDemoData.payouts, error: null })
-      setTopState({ loading: false, data: fallbackToDemoData.topNumbers, error: null })
-      setSettlementState({
-        loading: false,
-        data: fallbackToDemoData.settlementRuns,
-        error: null,
-      })
+      setKpiState({ loading: false, data: null, error: null })
+      setDailyState({ loading: false, data: null, error: null })
+      setStatusState({ loading: false, data: null, error: null })
+      setPayoutState({ loading: false, data: null, error: null })
+      setTopState({ loading: false, data: null, error: null })
+      setSettlementState({ loading: false, data: null, error: null })
       return
     }
     setForbidden(false)
@@ -220,36 +190,33 @@ export function StatsPage() {
 
     setKpiState({
       loading: false,
-      data: kpiRes.status === 'fulfilled' ? kpiRes.value.data : fallbackToDemoData.kpis,
-      error: null,
+      data: kpiRes.status === 'fulfilled' ? kpiRes.value.data : null,
+      error: kpiRes.status === 'rejected' ? String(kpiRes.reason) : null,
     })
     setDailyState({
       loading: false,
-      data: dailyRes.status === 'fulfilled' ? dailyRes.value.data : fallbackToDemoData.daily,
-      error: null,
+      data: dailyRes.status === 'fulfilled' ? dailyRes.value.data : null,
+      error: dailyRes.status === 'rejected' ? String(dailyRes.reason) : null,
     })
     setStatusState({
       loading: false,
-      data: statusRes.status === 'fulfilled' ? statusRes.value.data : fallbackToDemoData.status,
-      error: null,
+      data: statusRes.status === 'fulfilled' ? statusRes.value.data : null,
+      error: statusRes.status === 'rejected' ? String(statusRes.reason) : null,
     })
     setPayoutState({
       loading: false,
-      data: payoutRes.status === 'fulfilled' ? payoutRes.value.data : fallbackToDemoData.payouts,
-      error: null,
+      data: payoutRes.status === 'fulfilled' ? payoutRes.value.data : null,
+      error: payoutRes.status === 'rejected' ? String(payoutRes.reason) : null,
     })
     setTopState({
       loading: false,
-      data: topRes.status === 'fulfilled' ? topRes.value.data : fallbackToDemoData.topNumbers,
-      error: null,
+      data: topRes.status === 'fulfilled' ? topRes.value.data : null,
+      error: topRes.status === 'rejected' ? String(topRes.reason) : null,
     })
     setSettlementState({
       loading: false,
-      data:
-        settlementRes.status === 'fulfilled'
-          ? settlementRes.value.data
-          : fallbackToDemoData.settlementRuns,
-      error: null,
+      data: settlementRes.status === 'fulfilled' ? settlementRes.value.data : null,
+      error: settlementRes.status === 'rejected' ? String(settlementRes.reason) : null,
     })
   }, [analyticsFilters, token])
 
@@ -347,8 +314,8 @@ export function StatsPage() {
         </Alert>
       )}
       {isDemoMode && (
-        <Alert severity="info">
-          Showing demo analytics data because live stats are unavailable in this environment.
+        <Alert severity="warning">
+          Some analytics sections failed to load. Check your connection or permissions.
         </Alert>
       )}
 
