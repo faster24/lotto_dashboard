@@ -37,6 +37,7 @@ const makeBet = (overrides: Partial<Bet> = {}): Bet => ({
   placed_at: null,
   settled_at: null,
   settled_result_history_id: null,
+  winning_number: null,
   bet_numbers: [],
   pay_slip: {
     exists: false,
