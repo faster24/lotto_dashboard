@@ -54,6 +54,8 @@ export interface BetNumber {
   id: string
   bet_id: string
   number: number
+  amount: number
+  potential_winning: string
   created_at: string
   updated_at: string
 }
@@ -93,6 +95,7 @@ export interface Bet {
   placed_at: string | null
   settled_at: string | null
   settled_result_history_id: string | null
+  winning_number: number | null
   bet_numbers: BetNumber[]
   pay_slip: BetFileMeta
   payout_proof: BetFileMeta

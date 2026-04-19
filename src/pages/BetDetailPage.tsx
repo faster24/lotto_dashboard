@@ -17,6 +17,12 @@ import {
     DialogTitle,
     Snackbar,
     Tab,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
     Tabs,
     Stack,
     TextField,
@@ -26,7 +32,6 @@ import {
 import {
     useCallback,
     useEffect,
-    useMemo,
     useState,
     type ChangeEvent,
 } from 'react'
@@ -177,11 +182,6 @@ export function BetDetailPage() {
             }
         }
     }, [refundPreviewUrl])
-
-    const betNumbersText = useMemo(
-        () => bet?.bet_numbers.map((entry) => String(entry.number).padStart(2, '0')).join(', ') ?? '-',
-        [bet],
-    )
 
     const openPreview = async (type: 'pay-slip' | 'payout-proof') => {
         if (!token || !bet) return
@@ -476,13 +476,64 @@ export function BetDetailPage() {
                                         <Typography fontWeight={600}>{bet.target_opentime}</Typography>
                                     </Box>
                                     <Box sx={{ p: 1.5, borderRadius: 1.5, border: '1px solid', borderColor: 'divider', bgcolor: 'background.default' }}>
-                                        <Typography variant="caption" color="text.secondary">Amount</Typography>
+                                        <Typography variant="caption" color="text.secondary">Total Amount</Typography>
                                         <Typography fontWeight={600}>{bet.total_amount}</Typography>
                                     </Box>
-                                    <Box sx={{ p: 1.5, borderRadius: 1.5, border: '1px solid', borderColor: 'divider', bgcolor: 'background.default' }}>
-                                        <Typography variant="caption" color="text.secondary">Numbers</Typography>
-                                        <Typography fontWeight={600} sx={{ wordBreak: 'break-word' }}>{betNumbersText}</Typography>
-                                    </Box>
+                                </Box>
+                                <Box sx={{ borderRadius: 1.5, border: '1px solid', borderColor: 'divider', overflow: 'hidden' }}>
+                                    <Typography variant="caption" color="text.secondary" sx={{ px: 1.5, pt: 1.5, display: 'block' }}>Bet Numbers Breakdown</Typography>
+                                    <TableContainer>
+                                        <Table size="small">
+                                            <TableHead>
+                                                <TableRow>
+                                                    <TableCell>#</TableCell>
+                                                    <TableCell>Number</TableCell>
+                                                    <TableCell align="right">Amount</TableCell>
+                                                    <TableCell align="right">Potential Winning</TableCell>
+                                                    {bet.bet_result_status === 'WON' && <TableCell align="center">Won</TableCell>}
+                                                </TableRow>
+                                            </TableHead>
+                                            <TableBody>
+                                                {bet.bet_numbers.map((entry, idx) => {
+                                                    const isWinner = bet.winning_number !== null && entry.number === bet.winning_number
+                                                    return (
+                                                        <TableRow
+                                                            key={entry.id}
+                                                            sx={isWinner ? { bgcolor: 'success.light' } : undefined}
+                                                        >
+                                                            <TableCell>{idx + 1}</TableCell>
+                                                            <TableCell>
+                                                                <Typography component="span" fontFamily="monospace" fontWeight={isWinner ? 700 : 400}>
+                                                                    {String(entry.number).padStart(2, '0')}
+                                                                </Typography>
+                                                            </TableCell>
+                                                            <TableCell align="right">{entry.amount.toLocaleString()}</TableCell>
+                                                            <TableCell align="right">{Number(entry.potential_winning).toLocaleString(undefined, { minimumFractionDigits: 2 })}</TableCell>
+                                                            {bet.bet_result_status === 'WON' && (
+                                                                <TableCell align="center">
+                                                                    {isWinner && <Chip label="Won" color="success" size="small" />}
+                                                                </TableCell>
+                                                            )}
+                                                        </TableRow>
+                                                    )
+                                                })}
+                                                <TableRow sx={{ bgcolor: 'action.hover' }}>
+                                                    <TableCell colSpan={2}><Typography variant="caption" fontWeight={700}>Total</Typography></TableCell>
+                                                    <TableCell align="right">
+                                                        <Typography variant="caption" fontWeight={700}>
+                                                            {bet.bet_numbers.reduce((s, e) => s + e.amount, 0).toLocaleString()}
+                                                        </Typography>
+                                                    </TableCell>
+                                                    <TableCell align="right">
+                                                        <Typography variant="caption" fontWeight={700}>
+                                                            {bet.bet_numbers.reduce((s, e) => s + Number(e.potential_winning), 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                                        </Typography>
+                                                    </TableCell>
+                                                    {bet.bet_result_status === 'WON' && <TableCell />}
+                                                </TableRow>
+                                            </TableBody>
+                                        </Table>
+                                    </TableContainer>
                                 </Box>
                                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
                                     <Button

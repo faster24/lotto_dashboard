@@ -97,6 +97,7 @@ export function PayoutQueuePage() {
               <TableCell>Bet ID</TableCell>
               <TableCell>Bet Type</TableCell>
               <TableCell>Total Amount</TableCell>
+              <TableCell>Numbers</TableCell>
               <TableCell>Result</TableCell>
               <TableCell>Payout</TableCell>
               <TableCell align="right">Action</TableCell>
@@ -133,6 +134,24 @@ export function PayoutQueuePage() {
                 </TableCell>
                 <TableCell>{bet.bet_type}</TableCell>
                 <TableCell>{bet.total_amount}</TableCell>
+                <TableCell sx={{ minWidth: 140 }}>
+                  <Stack spacing={0.25}>
+                    {bet.bet_numbers.map((bn) => {
+                      const isWinner = bet.winning_number !== null && bn.number === bet.winning_number
+                      return (
+                        <Typography
+                          key={bn.id}
+                          variant="caption"
+                          color={isWinner ? 'success.main' : 'text.primary'}
+                          fontWeight={isWinner ? 700 : 400}
+                        >
+                          {String(bn.number).padStart(2, '0')} – {Number(bn.potential_winning).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                          {isWinner ? ' ✓' : ''}
+                        </Typography>
+                      )
+                    })}
+                  </Stack>
+                </TableCell>
                 <TableCell>
                   <Chip label={bet.bet_result_status} />
                 </TableCell>
@@ -163,7 +182,7 @@ export function PayoutQueuePage() {
             ))}
             {!loading && bets.length === 0 && (
               <TableRow>
-                <TableCell colSpan={6} align="center">
+                <TableCell colSpan={7} align="center">
                   No accepted winning bets pending payout.
                 </TableCell>
               </TableRow>
