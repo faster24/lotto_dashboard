@@ -84,6 +84,7 @@ export interface Bet {
   target_opentime: TargetOpenTime
   stock_date: string
   amount: number
+  currency: string
   total_amount: string
   status: BetStatus
   bet_result_status: BetResultStatus

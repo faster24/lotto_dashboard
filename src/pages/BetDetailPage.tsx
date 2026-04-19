@@ -488,8 +488,8 @@ export function BetDetailPage() {
                                                 <TableRow>
                                                     <TableCell>#</TableCell>
                                                     <TableCell>Number</TableCell>
-                                                    <TableCell align="right">Amount</TableCell>
-                                                    <TableCell align="right">Potential Winning</TableCell>
+                                                    <TableCell align="right">Amount ({bet.currency})</TableCell>
+                                                    <TableCell align="right">Potential Winning ({bet.currency})</TableCell>
                                                     {bet.bet_result_status === 'WON' && <TableCell align="center">Won</TableCell>}
                                                 </TableRow>
                                             </TableHead>
