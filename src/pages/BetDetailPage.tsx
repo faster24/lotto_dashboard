@@ -599,9 +599,9 @@ export function BetDetailPage() {
                                             </Stack>
                                             <Stack spacing={0.5} sx={{ p: 1.5, borderRadius: 1.5, border: '1px solid', borderColor: 'divider' }}>
                                                 <Typography variant="caption" color="text.secondary">
-                                                    Registered At
+                                                    Placed At
                                                 </Typography>
-                                                <Typography>{formatDateTime(bet.user.created_at)}</Typography>
+                                                <Typography>{formatDateTime(bet.placed_at)}</Typography>
                                             </Stack>
                                         </Box>
 
