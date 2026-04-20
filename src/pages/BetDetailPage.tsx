@@ -60,9 +60,11 @@ interface PreviewState {
 
 const formatDateTime = (value: string | null) => {
     if (!value) return '-'
-    const date = new Date(value)
+    // Normalize "YYYY-MM-DD HH:MM:SS" → ISO 8601 UTC so all browsers parse consistently
+    const normalized = value.includes('T') ? value : value.replace(' ', 'T') + (value.endsWith('Z') ? '' : 'Z')
+    const date = new Date(normalized)
     if (Number.isNaN(date.getTime())) return value
-    return date.toLocaleString()
+    return date.toLocaleString('en-US', { timeZone: 'Asia/Bangkok' })
 }
 
 const isPayoutActionAllowed = (bet: Bet) =>
